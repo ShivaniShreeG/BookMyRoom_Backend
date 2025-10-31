@@ -1,0 +1,271 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+   url = "mysql://schoolAttendance:Sensarsoft%40123@[2a02:4780:12:f6a7::1]:3306/book_my_room"
+
+}
+
+enum Role {
+  ADMIN
+  ADMINISTRATOR
+}
+
+enum AppPaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum BookingStatus {
+  PREBOOKED
+  BOOKED
+  CANCEL
+  BILLED
+}
+
+model Lodge {
+  lodge_id   Int       @id @default(autoincrement())
+  name       String
+  address    String
+  phone      String
+  email      String
+  logo       Bytes?
+  created_at DateTime  @default(now())
+  duedate    DateTime?
+  is_active  Boolean   @default(true)
+
+  users          User[]
+  admins         Admin[]
+  administrators Administrator[]
+  payments       AppPayment[]
+  facilitators   Facilitator[]
+  blocks         LodgeBlock[]
+  expenses       Expense[]
+  incomes        Income[]
+  peak_hours     Peak_hours[]
+  defaults       DefaultValue[]
+  rooms          Rooms[]
+  bookings       Booking[]
+  cancels        Cancel[]
+  billings       Billing[]
+
+  @@unique([name, address])
+}
+
+model User {
+  user_id   BigInt
+  lodge_id  Int
+  role      Role    @default(ADMIN)
+  password  String
+  is_active Boolean @default(true)
+
+  lodge         Lodge          @relation(fields: [lodge_id], references: [lodge_id])
+  admin         Admin?
+  administrator Administrator?
+  expenses      Expense[]
+  incomes       Income[]
+  peak_hours    Peak_hours[]
+  defaults      DefaultValue[]
+  rooms         Rooms[]
+  bookings      Booking[]
+  cancels       Cancel[]
+  billings      Billing[]
+
+  @@id([user_id, lodge_id])
+}
+
+model Admin {
+  id          Int    @id @default(autoincrement())
+  lodge_id    Int
+  user_id     BigInt
+  name        String
+  designation String
+  phone       String
+  email       String
+
+  lodge Lodge @relation(fields: [lodge_id], references: [lodge_id])
+  user  User  @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
+
+  @@unique([user_id, lodge_id])
+}
+
+model Administrator {
+  id       Int    @id @default(autoincrement())
+  user_id  BigInt
+  lodge_id Int
+  name     String
+  phone    String
+  email    String
+
+  lodge Lodge @relation(fields: [lodge_id], references: [lodge_id])
+  user  User  @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
+
+  @@unique([user_id, lodge_id])
+}
+
+model AppPayment {
+  id            Int              @id @default(autoincrement())
+  lodge_id      Int
+  BaseAmount    Int
+  gst           Float
+  amount        Float
+  paidAt        DateTime         @default(now())
+  periodStart   DateTime
+  periodEnd     DateTime
+  transactionId String?
+  status        AppPaymentStatus @default(PENDING)
+  createdAt     DateTime         @default(now())
+
+  lodge Lodge @relation(fields: [lodge_id], references: [lodge_id])
+}
+
+model Facilitator {
+  id         Int      @id @default(autoincrement())
+  lodge_id   Int
+  facility   String
+  name       String
+  phone      String
+  created_at DateTime @default(now())
+
+  lodge Lodge @relation(fields: [lodge_id], references: [lodge_id])
+}
+
+model LodgeBlock {
+  id       Int    @id @default(autoincrement())
+  lodge_id Int
+  reason   String
+
+  lodge Lodge @relation(fields: [lodge_id], references: [lodge_id])
+}
+
+model Expense {
+  id         Int       @id @default(autoincrement())
+  lodge_id   Int
+  user_id    BigInt
+  reason     String
+  amount     Float
+  created_at DateTime  @default(now())
+  updated_at DateTime? @updatedAt
+
+  lodge Lodge @relation(fields: [lodge_id], references: [lodge_id])
+  user  User  @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
+}
+
+model Income {
+  id         Int       @id @default(autoincrement())
+  lodge_id   Int
+  user_id    BigInt
+  reason     String
+  amount     Float
+  created_at DateTime  @default(now())
+  updated_at DateTime? @updatedAt
+
+  lodge Lodge @relation(fields: [lodge_id], references: [lodge_id])
+  user  User  @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
+}
+
+model Peak_hours {
+  id         Int       @id @default(autoincrement())
+  lodge_id   Int
+  user_id    BigInt
+  date       DateTime
+  reason     String
+  created_at DateTime  @default(now())
+  updated_at DateTime? @updatedAt
+
+  lodge Lodge @relation(fields: [lodge_id], references: [lodge_id])
+  user  User  @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
+
+  @@unique([lodge_id, date])
+}
+
+model DefaultValue {
+  id       Int    @id @default(autoincrement())
+  user_id  BigInt
+  lodge_id Int
+  type     String
+  reason   String
+  amount   Float
+
+  lodge Lodge @relation(fields: [lodge_id], references: [lodge_id])
+  user  User  @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
+}
+
+model Rooms {
+  id          Int    @id @default(autoincrement())
+  user_id     BigInt
+  lodge_id    Int
+  room_name   String
+  room_type   String
+  room_number Json
+
+  lodge Lodge @relation(fields: [lodge_id], references: [lodge_id])
+  user  User  @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
+
+  @@unique([lodge_id, room_type])
+}
+
+model Booking {
+  booking_id      Int
+  lodge_id        Int
+  user_id         BigInt
+  name            String
+  phone           String
+  alternate_phone String?
+  email           String?
+  address         String
+  numberofguest   Int
+  specification   Json?
+  check_in        DateTime
+  check_out       DateTime
+  baseamount      Float
+  gst             Float
+  amount          Float
+  status          BookingStatus
+  id_proof        Json?
+
+  lodge   Lodge    @relation(fields: [lodge_id], references: [lodge_id])
+  user    User     @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
+  cancel  Cancel?
+  billing Billing?
+
+  @@id([booking_id, lodge_id]) // composite primary key (unique pair)
+}
+
+model Cancel {
+  id            Int      @id @default(autoincrement())
+  booking_id    Int
+  lodge_id      Int
+  user_id       BigInt
+  reason        String
+  amount_paid   Float
+  cancel_charge Float
+  refund        Float
+  created_at    DateTime @default(now())
+
+  lodge   Lodge   @relation(fields: [lodge_id], references: [lodge_id])
+  user    User    @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
+  booking Booking @relation(fields: [booking_id, lodge_id], references: [booking_id, lodge_id])
+
+  @@unique([booking_id, lodge_id]) // required for 1:1 relation
+}
+
+model Billing {
+  id         Int       @id @default(autoincrement())
+  booking_id Int
+  lodge_id   Int
+  user_id    BigInt
+  reason     Json
+  total      Float
+  created_at DateTime  @default(now())
+  updated_at DateTime? @updatedAt
+
+  lodge   Lodge   @relation(fields: [lodge_id], references: [lodge_id])
+  user    User    @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
+  booking Booking @relation(fields: [booking_id, lodge_id], references: [booking_id, lodge_id])
+
+  @@unique([booking_id, lodge_id]) // required for 1:1 relation
+}
