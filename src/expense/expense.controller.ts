@@ -1,28 +1,53 @@
-import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Delete,
+  Param,
+  ParseIntPipe,
+} from '@nestjs/common';
 import { ExpenseService } from './expense.service';
+import { CreateExpenseDto, UpdateExpenseDto } from './dto/create-expense.dto';
 
 @Controller('expenses')
 export class ExpenseController {
   constructor(private readonly expenseService: ExpenseService) {}
 
-  // 🔹 1️⃣ Get all expenses
-  @Get()
-  findAll() {
-    return this.expenseService.findAll();
+  // GET /expenses/lodge/:lodgeId → all expenses for a lodge
+  @Get('lodge/:lodgeId')
+  findAllByLodge(@Param('lodgeId', ParseIntPipe) lodgeId: number) {
+    return this.expenseService.findAllByLodge(lodgeId);
   }
 
-  // 🔹 2️⃣ Get all expenses for a lodge
-  @Get('lodge/:lodge_id')
-  findByLodgeId(@Param('lodge_id', ParseIntPipe) lodge_id: number) {
-    return this.expenseService.findByLodgeId(lodge_id);
-  }
-
-  // 🔹 3️⃣ Get single expense by id + lodge_id
-  @Get(':id/:lodge_id')
+  // GET /expenses/:lodgeId/:expenseId → specific expense
+  @Get(':lodgeId/:expenseId')
   findOne(
-    @Param('id', ParseIntPipe) id: number,
-    @Param('lodge_id', ParseIntPipe) lodge_id: number,
+    @Param('lodgeId', ParseIntPipe) lodgeId: number,
+    @Param('expenseId', ParseIntPipe) expenseId: number,
   ) {
-    return this.expenseService.findOne(id, lodge_id);
+    return this.expenseService.findOne(lodgeId, expenseId);
+  }
+
+  // POST /expenses → create new expense
+  @Post()
+  create(@Body() dto: CreateExpenseDto) {
+    return this.expenseService.create(dto);
+  }
+
+  // PATCH /expenses/:expenseId → update an expense
+  @Patch(':expenseId')
+  update(
+    @Param('expenseId', ParseIntPipe) expenseId: number,
+    @Body() dto: UpdateExpenseDto,
+  ) {
+    return this.expenseService.update(expenseId, dto);
+  }
+
+  // DELETE /expenses/:expenseId → delete an expense
+  @Delete(':expenseId')
+  remove(@Param('expenseId', ParseIntPipe) expenseId: number) {
+    return this.expenseService.remove(expenseId);
   }
 }

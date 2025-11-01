@@ -1,28 +1,38 @@
-import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
+import { Body, Controller, Get, Post, Param, Delete, ParseIntPipe } from '@nestjs/common';
 import { PeakHoursService } from './peak-hour.service';
+import { CreatePeakHourDto } from './dto/create-peak-hour.dto';
 
 @Controller('peak-hours')
 export class PeakHoursController {
   constructor(private readonly peakHoursService: PeakHoursService) {}
 
-  // 🔹 1️⃣ Get all peak hour records
-  @Get()
-  findAll() {
-    return this.peakHoursService.findAll();
+  // GET /peak-hours/lodge/:lodgeId → all peak hours for a lodge
+  @Get('lodge/:lodgeId')
+  findAllByLodge(@Param('lodgeId', ParseIntPipe) lodgeId: number) {
+    return this.peakHoursService.findAllByLodge(lodgeId);
   }
 
-  // 🔹 2️⃣ Get all peak hours for a specific lodge
-  @Get('lodge/:lodge_id')
-  findByLodgeId(@Param('lodge_id', ParseIntPipe) lodge_id: number) {
-    return this.peakHoursService.findByLodgeId(lodge_id);
+  // POST /peak-hours → create a new peak hour
+  @Post()
+  create(@Body() dto: CreatePeakHourDto) {
+    return this.peakHoursService.create(dto);
   }
 
-  // 🔹 3️⃣ Get one record by ID + lodge_id
-  @Get(':id/:lodge_id')
-  findOne(
-    @Param('id', ParseIntPipe) id: number,
-    @Param('lodge_id', ParseIntPipe) lodge_id: number,
+  // GET /peak-hours/lodge/:lodgeId/:date → specific peak hour by date
+  @Get('lodge/:lodgeId/:date')
+  findByLodgeAndDate(
+    @Param('lodgeId', ParseIntPipe) lodgeId: number,
+    @Param('date') date: string,
   ) {
-    return this.peakHoursService.findOne(id, lodge_id);
+    return this.peakHoursService.findByLodgeAndDate(lodgeId, date);
+  }
+
+  // DELETE /peak-hours/lodge/:lodgeId/:id → delete a specific peak hour
+  @Delete('lodge/:lodgeId/:id')
+  delete(
+    @Param('lodgeId', ParseIntPipe) lodgeId: number,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.peakHoursService.delete(lodgeId, id);
   }
 }

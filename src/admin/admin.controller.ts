@@ -1,23 +1,37 @@
 import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
 import { AdminService } from './admin.service';
 
-@Controller('admins')
+@Controller('details')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
-  // Get all admins
-  @Get()
-  findAll() {
-    return this.adminService.findAll();
+  // ====== Admin endpoints ======
+
+  @Get(':lodgeId/admins')
+  findAllAdmins(@Param('lodgeId', ParseIntPipe) lodgeId: number) {
+    return this.adminService.findAllAdminsByLodge(lodgeId);
   }
 
-  // Get single admin by id
-  @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.adminService.findOne(id);
+  @Get(':lodgeId/admins/:userId')
+  findAdmin(
+    @Param('lodgeId', ParseIntPipe) lodgeId: number,
+    @Param('userId') userId: string, // user_id is STRING in Prisma
+  ) {
+    return this.adminService.findAdminByLodge(lodgeId, userId);
   }
-   @Get('lodge/:lodge_id')
-  findByLodgeId(@Param('lodge_id', ParseIntPipe) lodge_id: number) {
-    return this.adminService.findByLodgeId(lodge_id);
+
+  // ====== Administrator endpoints ======
+
+  @Get(':lodgeId/administrators')
+  findAllAdministrators(@Param('lodgeId', ParseIntPipe) lodgeId: number) {
+    return this.adminService.findAllAdministratorsByLodge(lodgeId);
+  }
+
+  @Get(':lodgeId/administrators/:userId')
+  findAdministrator(
+    @Param('lodgeId', ParseIntPipe) lodgeId: number,
+    @Param('userId') userId: string,
+  ) {
+    return this.adminService.findAdministratorByLodge(lodgeId, userId);
   }
 }

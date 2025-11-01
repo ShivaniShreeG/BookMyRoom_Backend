@@ -1,27 +1,29 @@
-import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, ParseIntPipe } from '@nestjs/common';
 import { UserService } from './user.service';
+import { CreateUserDto } from './dto/create-user.dto';
 
 @Controller('users')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  // Get all users (with selected fields)
-  @Get()
-  findAll() {
-    return this.userService.findAll();
-  }
-  
-  @Get('lodge/:lodge_id')
-  findByLodgeId(@Param('lodge_id', ParseIntPipe) lodge_id: number) {
-    return this.userService.findByLodgeId(lodge_id);
+  @Get(':lodgeId')
+  findAllByLodge(@Param('lodgeId', ParseIntPipe) lodgeId: number) {
+    return this.userService.findAllByLodge(lodgeId);
   }
 
-  // Get one user by composite key
-  @Get(':user_id/:lodge_id')
-  findOne(
-    @Param('user_id') user_id: string,
-    @Param('lodge_id', ParseIntPipe) lodge_id: number,
+  @Get(':lodgeId/:userId')
+  findOneByLodge(
+    @Param('lodgeId', ParseIntPipe) lodgeId: number,
+    @Param('userId') userId: string,
   ) {
-    return this.userService.findOne(BigInt(user_id), lodge_id);
+    return this.userService.findOneByLodge(lodgeId, userId);
+  }
+
+  @Post(':lodgeId/admin')
+  addAdmin(
+    @Param('lodgeId', ParseIntPipe) lodgeId: number,
+    @Body() dto: CreateUserDto,
+  ) {
+    return this.userService.addAdmin({ ...dto, lodge_id: lodgeId });
   }
 }

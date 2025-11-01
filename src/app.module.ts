@@ -4,7 +4,7 @@ import { AppService } from './app.service';
 import { LodgeModule } from './lodge/lodge.module';
 import { UserModule } from './user/user.module';
 import { AdminModule } from './admin/admin.module';
-import { AdministratorModule } from './administrator/administrator.module';
+// import { AdministratorModule } from './administrator/administrator.module';
 import { AppPaymentModule } from './app-payment/app-payment.module';
 import { FacilitatorModule } from './facilitator/facilitator.module';
 import { ExpenseModule } from './expense/expense.module';
@@ -16,13 +16,15 @@ import { RoomsModule } from './room/room.module';
 import { BookingModule } from './booking/booking.module';
 import { CancelModule } from './cancel/cancel.module';
 import { BillingModule } from './billing/billing.module';
+import { TwilioModule } from './twillo/twillo.module';
+import { RegisterModule } from './register/register.module';
 
 @Module({
   imports: [
     LodgeModule,
     UserModule,
     AdminModule,
-    AdministratorModule,
+    // AdministratorModule,
     AppPaymentModule,
     FacilitatorModule,
     ExpenseModule,
@@ -33,7 +35,9 @@ import { BillingModule } from './billing/billing.module';
     RoomsModule,
     BookingModule,
     CancelModule,
-    BillingModule
+    BillingModule,
+    TwilioModule,
+    RegisterModule
   ],
   controllers: [AppController],
   providers: [AppService],

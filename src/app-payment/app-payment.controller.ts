@@ -1,28 +1,55 @@
-import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Param,
+  ParseIntPipe,
+  Body,
+} from '@nestjs/common';
 import { AppPaymentService } from './app-payment.service';
+import { AppPaymentStatus } from '@prisma/client';
 
-@Controller('app-payments')
+@Controller('api/app-payment')
 export class AppPaymentController {
   constructor(private readonly appPaymentService: AppPaymentService) {}
 
-  // 🔹 1️⃣ Get all app payments
-  @Get()
-  findAll() {
-    return this.appPaymentService.findAll();
-  }
-
-  // 🔹 2️⃣ Get all payments by lodge_id
-  @Get('lodge/:lodge_id')
-  findByLodgeId(@Param('lodge_id', ParseIntPipe) lodge_id: number) {
-    return this.appPaymentService.findByLodgeId(lodge_id);
-  }
-
-  // 🔹 3️⃣ Get single payment by id + lodge_id
-  @Get(':id/:lodge_id')
-  findOne(
-    @Param('id', ParseIntPipe) id: number,
-    @Param('lodge_id', ParseIntPipe) lodge_id: number,
+  // ✅ Create yearly payment
+  @Post('create/:lodgeId')
+  async createPayment(
+    @Param('lodgeId', ParseIntPipe) lodgeId: number,
+    @Body('transactionId') transactionId?: string,
   ) {
-    return this.appPaymentService.findOne(id, lodge_id);
+    return this.appPaymentService.createYearlyPayment(lodgeId, transactionId);
+  }
+
+  // ✅ Update payment status
+  @Post('update-status/:paymentId')
+  async updateStatus(
+    @Param('paymentId', ParseIntPipe) paymentId: number,
+    @Body() body: { status: AppPaymentStatus; transactionId?: string },
+  ) {
+    return this.appPaymentService.updatePaymentStatus(
+      paymentId,
+      body.status,
+      body.transactionId,
+    );
+  }
+
+  // ✅ Get current/latest payment
+  @Get('current/:lodgeId')
+  async getCurrentPayment(@Param('lodgeId', ParseIntPipe) lodgeId: number) {
+    return this.appPaymentService.getCurrentPayment(lodgeId);
+  }
+
+  // ✅ Get payment history
+  @Get('history/:lodgeId')
+  async getPaymentHistory(@Param('lodgeId', ParseIntPipe) lodgeId: number) {
+    return this.appPaymentService.getPaymentHistory(lodgeId);
+  }
+
+  // ✅ Expire old payments manually
+  @Post('expire')
+  async expireOldPayments() {
+    return this.appPaymentService.expireOldPayments();
   }
 }

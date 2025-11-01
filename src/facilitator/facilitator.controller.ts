@@ -1,28 +1,71 @@
-import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Param,
+  Body,
+} from '@nestjs/common';
 import { FacilitatorService } from './facilitator.service';
+import { CreateFacilitatorDto } from './dto/create-facilitator.dto';
+import { UpdateFacilitatorDto } from './dto/update-facilitator.dto';
 
-@Controller('facilitators')
+@Controller('facilitator')
 export class FacilitatorController {
   constructor(private readonly facilitatorService: FacilitatorService) {}
 
-  // 🔹 1️⃣ Get all facilitators
-  @Get()
-  findAll() {
-    return this.facilitatorService.findAll();
+  // ✅ Create a new facilitator
+  @Post()
+  async create(@Body() dto: CreateFacilitatorDto) {
+    const data = await this.facilitatorService.create(dto);
+    return {
+      success: true,
+      message: 'Facilitator created successfully',
+      data,
+    };
   }
 
-  // 🔹 2️⃣ Get all facilitators by lodge_id
+  // ✅ Get all facilitators by lodge_id
   @Get('lodge/:lodge_id')
-  findByLodgeId(@Param('lodge_id', ParseIntPipe) lodge_id: number) {
-    return this.facilitatorService.findByLodgeId(lodge_id);
+  async findAllByLodge(@Param('lodge_id') lodge_id: string) {
+    const data = await this.facilitatorService.findAllByLodge(Number(lodge_id));
+    return {
+      success: true,
+      message: 'Facilitators fetched successfully',
+      data,
+    };
   }
 
-  // 🔹 3️⃣ Get single facilitator by id + lodge_id
-  @Get(':id/:lodge_id')
-  findOne(
-    @Param('id', ParseIntPipe) id: number,
-    @Param('lodge_id', ParseIntPipe) lodge_id: number,
-  ) {
-    return this.facilitatorService.findOne(id, lodge_id);
+  // ✅ Get one facilitator by id
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    const data = await this.facilitatorService.findOne(Number(id));
+    return {
+      success: true,
+      message: 'Facilitator fetched successfully',
+      data,
+    };
+  }
+
+  // ✅ Update facilitator
+  @Patch(':id')
+  async update(@Param('id') id: string, @Body() dto: UpdateFacilitatorDto) {
+    const data = await this.facilitatorService.update(Number(id), dto);
+    return {
+      success: true,
+      message: 'Facilitator updated successfully',
+      data,
+    };
+  }
+
+  // ✅ Delete facilitator
+  @Delete(':id')
+  async remove(@Param('id') id: string) {
+    await this.facilitatorService.remove(Number(id));
+    return {
+      success: true,
+      message: 'Facilitator deleted successfully',
+    };
   }
 }

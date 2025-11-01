@@ -1,9 +1,18 @@
-import { IsOptional, IsString, IsEmail, IsBoolean } from 'class-validator';
+import { IsOptional, IsString, IsDateString } from 'class-validator';
 
 export class UpdateLodgeDto {
+  
   @IsOptional()
   @IsString()
   name?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  email?: string;
 
   @IsOptional()
   @IsString()
@@ -11,20 +20,9 @@ export class UpdateLodgeDto {
 
   @IsOptional()
   @IsString()
-  phone?: string;
-
-  @IsOptional()
-  @IsEmail()
-  email?: string;
-
-  @IsOptional()
-  @IsString()
   logo?: string; // base64 string
 
   @IsOptional()
+  @IsDateString()
   duedate?: Date;
-
-  @IsOptional()
-  @IsBoolean()
-  is_active?: boolean;
 }
