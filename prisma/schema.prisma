@@ -50,6 +50,9 @@ model Lodge {
   bookings       Booking[]
   cancels        Cancel[]
   billings       Billing[]
+  Drawing        Drawing[]
+  SubmitTicket   SubmitTicket[]
+  Message        Message[]
 
   @@unique([name, address])
 }
@@ -72,6 +75,8 @@ model User {
   bookings      Booking[]
   cancels       Cancel[]
   billings      Billing[]
+  Drawing       Drawing[]
+  SubmitTicket  SubmitTicket[]
 
   @@id([user_id, lodge_id])
 }
@@ -145,6 +150,7 @@ model Expense {
   lodge_id   Int
   user_id    String
   reason     String
+  type       String?
   amount     Float
   created_at DateTime  @default(now())
   updated_at DateTime? @updatedAt
@@ -159,6 +165,7 @@ model Income {
   user_id    String
   reason     String
   amount     Float
+  type       String?
   created_at DateTime  @default(now())
   updated_at DateTime? @updatedAt
 
@@ -270,4 +277,38 @@ model Billing {
   booking Booking @relation(fields: [booking_id, lodge_id], references: [booking_id, lodge_id])
 
   @@unique([booking_id, lodge_id]) // required for 1:1 relation
+}
+
+model Drawing {
+  id         Int       @id @default(autoincrement())
+  lodge_id   Int
+  user_id    String // <-- missing in your version
+  reason     String
+  amount     Float
+  type       String?
+  created_at DateTime  @default(now())
+  updated_at DateTime? @updatedAt
+
+  lodge Lodge @relation(fields: [lodge_id], references: [lodge_id])
+  user  User  @relation(fields: [lodge_id, user_id], references: [lodge_id, user_id])
+}
+
+model SubmitTicket {
+  id         Int      @id @default(autoincrement())
+  lodge_id   Int
+  user_id    String
+  issue      String
+  created_at DateTime @default(now())
+
+  lodge Lodge @relation(fields: [lodge_id], references: [lodge_id])
+  user  User  @relation(fields: [lodge_id, user_id], references: [lodge_id, user_id])
+}
+
+model Message {
+  id         Int      @id @default(autoincrement())
+  lodge_id   Int
+  message    String
+  created_at DateTime @default(now())
+
+  lodge Lodge @relation(fields: [lodge_id], references: [lodge_id])
 }
