@@ -22,6 +22,7 @@ import { MessageModule } from './message/message.module';
 import { ProfileModule } from './profile/profile.module';
 import { SubmitTicketModule } from './submit/submit.module';
 import { InstructionModule } from './instruction/instructions.module';
+import { CalenderModule } from './calender/calender.module';
 
 @Module({
   imports: [
@@ -45,7 +46,8 @@ import { InstructionModule } from './instruction/instructions.module';
     RegisterModule,
     MessageModule,
     SubmitTicketModule,
-    InstructionModule
+    InstructionModule,
+    CalenderModule
   ],
   controllers: [AppController],
   providers: [AppService],

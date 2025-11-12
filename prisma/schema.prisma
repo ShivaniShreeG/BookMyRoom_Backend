@@ -212,7 +212,7 @@ model Rooms {
   lodge Lodge @relation(fields: [lodge_id], references: [lodge_id])
   user  User  @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
 
-  @@unique([lodge_id, room_type])
+  @@unique([lodge_id, room_name,room_type])
 }
 
 model Booking {
