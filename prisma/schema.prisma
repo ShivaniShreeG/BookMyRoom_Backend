@@ -53,6 +53,7 @@ model Lodge {
   Drawing        Drawing[]
   SubmitTicket   SubmitTicket[]
   Message        Message[]
+  Instruction    Instruction[]
 
   @@unique([name, address])
 }
@@ -311,4 +312,16 @@ model Message {
   created_at DateTime @default(now())
 
   lodge Lodge @relation(fields: [lodge_id], references: [lodge_id])
+}
+
+model Instruction {
+  id          Int       @id @default(autoincrement())
+  lodge_id    Int
+  instruction String
+  created_at  DateTime  @default(now())
+  updated_at  DateTime? @updatedAt
+
+  lodge Lodge @relation(fields: [lodge_id], references: [lodge_id])
+
+  @@index([lodge_id])
 }

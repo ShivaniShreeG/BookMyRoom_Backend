@@ -1,9 +1,7 @@
-import { IsNotEmpty, IsEmail, IsString, IsNumber, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsEmail, IsString, IsBoolean, IsOptional, IsNumber } from 'class-validator';
 
-export class CreateLodgeOwnerDto {
-  @IsNumber()
-  lodge_id: number; // ✅ you’ll provide this manually
-
+export class CreateLodgeAdminDto {
+  // Lodge fields
   @IsString()
   @IsNotEmpty()
   lodge_name: string;
@@ -19,26 +17,34 @@ export class CreateLodgeOwnerDto {
   @IsNotEmpty()
   lodge_address: string;
 
+  @IsOptional()
+  @IsString() // You’ll convert to Buffer when saving to Prisma
+  lodge_logo: string;
+
+  // ✅ Optional lodge_id (for lookups or testing)
+  @IsOptional()
+  @IsNumber()
+  lodge_id: number;
+
+  // User fields (used for login)
   @IsString()
   @IsNotEmpty()
-  user_id: string; // Prisma expects String, not Number
+  user_id: string;
 
   @IsString()
   @IsNotEmpty()
   password: string;
 
+  // Admin profile fields
   @IsString()
   @IsNotEmpty()
-  owner_name: string;
+  admin_name: string;
 
   @IsString()
   @IsNotEmpty()
-  owner_phone: string;
+  admin_phone: string;
 
   @IsEmail()
-  owner_email: string;
+  admin_email: string;
 
-  @IsOptional()
-  @IsString()
-  lodge_logo?: string;
 }

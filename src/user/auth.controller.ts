@@ -14,46 +14,48 @@ export class AuthController {
 
   // 🔹 LOGIN
   @Post('login')
-  async login(@Body() body: any, @Res() res: Response) {
-    const { lodgeId, userId, password } = body;
-
-    if (!lodgeId || !userId || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'lodgeId, userId, and password are required',
-      });
-    }
-
-    try {
-      const result = await this.userService.login(
-        Number(lodgeId),
-        String(userId),
-        password,
-      );
-
-      return res.status(200).json({
-        success: result.success,
-        message: result.message,
-        user: result.user,
-      });
-    } catch (error: any) {
-      return res.status(500).json({
-        success: false,
-        message: error?.message || 'Login failed',
-      });
-    }
+ async login(@Body() body: any, @Res() res: Response) {
+  if (!body || body.userId === undefined || !body.password) {
+    return res.status(400).json({
+      success: false,
+      message: 'userId and password are required',
+    });
   }
+
+  try {
+    const lodgeId = body.lodgeId ? Number(body.lodgeId) : 0; // default 0 if missing
+    const userId = String(body.userId); // Prisma user_id is String
+    const password = body.password;
+
+    const result = await this.userService.login(lodgeId, userId, password);
+
+    return res.status(200).json({
+      success: result.success,
+      message: result.message,
+      user: result.user,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error?.message || 'Login failed',
+    });
+  }
+}
+
 
   // 🔹 CHANGE PASSWORD (logged-in user)
   @Post('change-password')
   async changePassword(@Body() body: any, @Res() res: Response) {
     const { lodgeId, userId, oldPassword, newPassword } = body;
 
-    if (!lodgeId || !userId || !oldPassword || !newPassword) {
-      return res.status(400).json({
-        success: false,
-        message: 'lodgeId, userId, oldPassword, and newPassword are required',
-      });
+    if (!userId) { 
+      return res.status(400).json({ success: false, message: 'userId is required' }); 
+    }
+     if (!oldPassword) {
+       return res.status(400).json({ success: false, message: 'oldPassword is required' });
+    } 
+    if (!newPassword) { 
+      return res.status(400).json({ success: false, message: 'newPassword is required' });
     }
 
     try {
@@ -77,7 +79,7 @@ export class AuthController {
   }
 
   // 🔹 SEND OTP (forgot password)
-  @Post('send-otp')
+  @Post('send_otp')
   async sendOtp(@Body() body: { lodgeId: number; userId: string; otp: string }) {
     const { lodgeId, userId, otp } = body;
 
@@ -95,7 +97,7 @@ export class AuthController {
   }
 
   // 🔹 UPDATE PASSWORD (after OTP verification)
-  @Post('update-password')
+  @Post('update_password')
   async updatePassword(@Body() body: { lodgeId: number; userId: string; newPassword: string }) {
     const { lodgeId, userId, newPassword } = body;
 

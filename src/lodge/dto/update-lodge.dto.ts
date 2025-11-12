@@ -1,7 +1,6 @@
-import { IsOptional, IsString, IsDateString } from 'class-validator';
+import { IsOptional, IsString, IsDate } from 'class-validator';
 
 export class UpdateLodgeDto {
-  
   @IsOptional()
   @IsString()
   name?: string;
@@ -20,9 +19,9 @@ export class UpdateLodgeDto {
 
   @IsOptional()
   @IsString()
-  logo?: string; // base64 string
+  logo?: string; // Base64 string
 
   @IsOptional()
-  @IsDateString()
-  duedate?: Date;
+  @IsDate()
+  duedate?: Date; // Match Prisma field name exactly
 }

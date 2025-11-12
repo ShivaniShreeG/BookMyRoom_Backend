@@ -5,19 +5,16 @@ export class CreateLodgeDto {
   @IsInt()
   lodge_id?: number;
 
-
-  @IsString()
   @IsNotEmpty()
+  @IsString()
   name: string;
 
- 
-  @IsString()
   @IsNotEmpty()
+  @IsString()
   phone: string;
 
-  
-  @IsString()
   @IsNotEmpty()
+  @IsString()
   email: string;
 
   @IsNotEmpty()
@@ -26,5 +23,5 @@ export class CreateLodgeDto {
 
   @IsOptional()
   @IsString()
-  logo?: string; // base64 string
+  logo?: string; // Base64 string
 }

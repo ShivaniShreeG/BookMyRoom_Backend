@@ -7,7 +7,7 @@ export class PeakHoursController {
   constructor(private readonly peakHoursService: PeakHoursService) {}
 
   // GET /peak-hours/lodge/:lodgeId → all peak hours for a lodge
-  @Get('lodge/:lodgeId')
+  @Get(':lodgeId')
   findAllByLodge(@Param('lodgeId', ParseIntPipe) lodgeId: number) {
     return this.peakHoursService.findAllByLodge(lodgeId);
   }

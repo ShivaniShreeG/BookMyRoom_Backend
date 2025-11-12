@@ -18,11 +18,16 @@ import { CancelModule } from './cancel/cancel.module';
 import { BillingModule } from './billing/billing.module';
 import { TwilioModule } from './twillo/twillo.module';
 import { RegisterModule } from './register/register.module';
+import { MessageModule } from './message/message.module';
+import { ProfileModule } from './profile/profile.module';
+import { SubmitTicketModule } from './submit/submit.module';
+import { InstructionModule } from './instruction/instructions.module';
 
 @Module({
   imports: [
     LodgeModule,
     UserModule,
+    ProfileModule,
     AdminModule,
     // AdministratorModule,
     AppPaymentModule,
@@ -37,7 +42,10 @@ import { RegisterModule } from './register/register.module';
     CancelModule,
     BillingModule,
     TwilioModule,
-    RegisterModule
+    RegisterModule,
+    MessageModule,
+    SubmitTicketModule,
+    InstructionModule
   ],
   controllers: [AppController],
   providers: [AppService],

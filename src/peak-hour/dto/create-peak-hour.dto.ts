@@ -15,6 +15,5 @@ export class CreatePeakHourDto {
   @IsString()
   reason?: string;
 
-  @IsNumber()
-  rent: number;
+
 }
