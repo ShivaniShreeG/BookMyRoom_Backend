@@ -1,102 +1,214 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable ,BadRequestException} from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-
 @Injectable()
 export class CalenderService {
 
-   async getBookingsByRoom(
-  lodgeId: number,
-  roomType: string,
-  roomName: string
-) {
-  // 1. Find all rooms matching type+name
-  const rooms = await prisma.rooms.findMany({
-    where: {
-      lodge_id: lodgeId,
-      room_type: roomType,
-      room_name: roomName,
-    },
-    select: {
-      room_number: true, // array of room numbers
-    },
-  });
+  async getAvailableRooms(
+    lodgeId: number,
+    checkIn: Date,
+    checkOut: Date
+  ) {
 
-  const allRoomNumbers = rooms.flatMap(r => r.room_number);
-
-  // 2. Fetch bookings for these rooms (exclude cancelled)
-  const bookings = await prisma.booking.findMany({
-    where: {
-      lodge_id: lodgeId,
-      room_type: roomType,
-      room_name: roomName,
-      status: {
-        in: ['BOOKED', 'BILLED'], // only include booked/billed
-      },
-    },
-  });
-
-  // 3. Fetch peak hours for this lodge
-  const peakHours = await prisma.peak_hours.findMany({
-    where: {
-      lodge_id: lodgeId,
-    },
-  });
-
-  // 4. Return bookings along with all room numbers and peak hours
-  return {
-    allRoomNumbers,
-    bookings: bookings.map(b => ({
-      booking_id: b.booking_id,
-      room_number: b.room_number,
-      check_in: b.check_in,
-      check_out: b.check_out,
-      status: b.status,
-    })),
-    peakHours: peakHours.map(p => ({
-      id: p.id,
-      date: p.date,
-      reason: p.reason,
-    })),
-  };
-}
-
-  async getRoomsSummary(lodgeId: number) {
-
+    // 1. All rooms in lodge
     const rooms = await prisma.rooms.findMany({
       where: { lodge_id: lodgeId },
       select: {
-        id:true,
         room_type: true,
         room_name: true,
-        room_number: true, // JSON array of room numbers
+        room_number: true,
       },
     });
 
-    // Group by room_type + room_name
-    const summaryMap = new Map<string, { id:number,room_type: string; room_name: string; total: number; numbers: string }>();
+    // 2. Find overlapping bookings (date + time)
+    const overlapping = await prisma.booking.findMany({
+      where: {
+        lodge_id: lodgeId,
+        status: { in: ["BOOKED", "PREBOOKED", "BILLED"] },
+        check_in: { lte: checkOut },   // booking starts before checkout
+        check_out: { gte: checkIn },   // booking ends after checkin
+      },
+      select: { room_number: true },
+    });
+
+    const booked = new Set(overlapping.map(b => String(b.room_number)));
+
+    // 3. Group rooms by type + name
+    const result = new Map<
+      string,
+      {
+        room_type: string;
+        room_name: string;
+        available_rooms: string[];
+        total_rooms: number;
+      }
+    >();
 
     rooms.forEach(room => {
       const key = `${room.room_type}-${room.room_name}`;
-      const numbersArray = Array.isArray(room.room_number) ? room.room_number : [room.room_number];
+      const numbers = Array.isArray(room.room_number)
+        ? room.room_number
+        : [room.room_number];
 
-      if (summaryMap.has(key)) {
-        const existing = summaryMap.get(key)!;
-        existing.total += numbersArray.length; // sum total rooms
-        existing.numbers += ',' + numbersArray.join(',');
-      } else {
-        summaryMap.set(key, {
-          id:room.id,
+      const avail = numbers
+        .map(n => String(n))
+        .filter(n => !booked.has(n));
+
+      if (!result.has(key)) {
+        result.set(key, {
           room_type: room.room_type,
           room_name: room.room_name,
-          total: numbersArray.length,
-          numbers: numbersArray.join(','),
+          available_rooms: avail,
+          total_rooms: numbers.length,
         });
+      } else {
+        const grp = result.get(key)!;
+        grp.available_rooms.push(...avail);
+        grp.total_rooms += numbers.length;
       }
     });
 
-    return Array.from(summaryMap.values());
+    return Array.from(result.values());
   }
+
+async calculateRoomPrice(dto: any) {
+  const lodge_id = Number(dto.lodge_id);
+  const room_name = dto.room_name;
+  const room_type = dto.room_type;
+  const check_in = new Date(dto.check_in);
+  const check_out = new Date(dto.check_out);
+  const room_count = Number(dto.room_count);
+
+  const override_base_amount = dto.override_base_amount
+    ? Number(dto.override_base_amount)
+    : undefined;
+
+  if (isNaN(room_count)) {
+    throw new BadRequestException("room_count must be numeric");
+  }
+
+  // Calculate number of days (check-out - check-in)
+  const oneDay = 1000 * 60 * 60 * 24;
+  const numDays = Math.ceil((check_out.getTime() - check_in.getTime()) / oneDay);
+
+  const reason = `Rent (${room_name} (${room_type}))`;
+
+  let baseAmount = 0;
+  if (override_base_amount) {
+    baseAmount = override_base_amount;
+  } else {
+    const peak = await prisma.peak_hours.findFirst({
+      where: {
+        lodge_id,
+        date: { gte: check_in, lte: check_out },
+      },
+    });
+
+    const defaultValue = await prisma.defaultValue.findFirst({
+      where: {
+        lodge_id,
+        reason,
+        type: peak ? "Peak Hours" : "Default",
+      },
+    });
+
+    if (!defaultValue) {
+      throw new BadRequestException(
+        `Default value missing for ${reason} (${peak ? "peak hour" : "normal"})`
+      );
+    }
+
+    baseAmount = Number(defaultValue.amount);
+  }
+
+  // Total = baseAmount × number of rooms × number of days
+  const totalBase = baseAmount * room_count * numDays;
+
+  const GST_RATE = 18;
+  const gstAmount = Number((totalBase * GST_RATE / 100).toFixed(2));
+  const totalAmount = Number((totalBase + gstAmount).toFixed(2));
+
+  return {
+    status: override_base_amount ? "OVERRIDE" : "NORMAL",
+    room_name,
+    room_type,
+    check_in,
+    check_out,
+    room_count,
+    num_days: numDays, // send number of days to frontend
+
+    base_amount_per_room: baseAmount,
+    total_base_amount: totalBase,
+
+    gst_rate: GST_RATE,
+    gst_amount: gstAmount,
+    total_amount: totalAmount,
+  };
+}
+
+async updatePricing(dto: any) {
+  const lodge_id = Number(dto.lodge_id);
+  const room_name = dto.room_name;
+  const room_type = dto.room_type;
+  const pricing_type = dto.pricing_type; // "NORMAL" | "PEAK_HOUR"
+  const room_count = Number(dto.room_count);
+  const check_in = new Date(dto.check_in);
+  const check_out = new Date(dto.check_out);
+
+  if (!room_name || !room_type || !pricing_type) {
+    throw new BadRequestException("room_name, room_type, and pricing_type are required");
+  }
+
+  if (isNaN(room_count) || room_count <= 0) {
+    throw new BadRequestException("room_count must be a positive number");
+  }
+
+  const reason = `Rent (${room_name} (${room_type}))`;
+
+  const defaultValue = await prisma.defaultValue.findFirst({
+    where: {
+      lodge_id,
+      reason,
+      type: pricing_type === "PEAK_HOUR" ? "Peak Hours" : "Default",
+    },
+  });
+
+  if (!defaultValue) {
+    throw new BadRequestException(`Default price missing for ${reason} (${pricing_type})`);
+  }
+
+  const baseAmount = Number(defaultValue.amount);
+
+  const oneDay = 1000 * 60 * 60 * 24;
+  const numDays = Math.ceil((check_out.getTime() - check_in.getTime()) / oneDay);
+
+  const totalBase = baseAmount * room_count * numDays;
+  const GST_RATE = 18;
+  const gstAmount = Number((totalBase * GST_RATE / 100).toFixed(2));
+  const totalAmount = Number((totalBase + gstAmount).toFixed(2));
+
+  return {
+    status: pricing_type,
+    room_name,
+    room_type,
+    check_in,
+    check_out,
+    room_count,
+    num_days: numDays, // send number of days to frontend
+
+    base_amount_per_room: baseAmount,
+    total_base_amount: totalBase,
+
+    gst_rate: GST_RATE,
+    gst_amount: gstAmount,
+    total_amount: totalAmount,
+  };
+}
+
+
+
+
+
 }

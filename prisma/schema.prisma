@@ -221,7 +221,7 @@ model Booking {
   user_id         String
   name            String
   phone           String
-  alternate_phone String?
+  alternate_phone Json?
   email           String?
   address         String
   numberofguest   Int
@@ -231,11 +231,13 @@ model Booking {
   baseamount      Float
   gst             Float
   amount          Float
+  advance         Float
+  Balance         Float
   status          BookingStatus
   id_proof        Json?
   room_name       String
   room_type       String
-  room_number     String
+  room_number     Json
 
   lodge   Lodge    @relation(fields: [lodge_id], references: [lodge_id])
   user    User     @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
