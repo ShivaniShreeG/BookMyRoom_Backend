@@ -224,6 +224,7 @@ model Booking {
   alternate_phone Json?
   email           String?
   address         String
+  deposite        Float @default(0)
   numberofguest   Int
   specification   Json?
   check_in        DateTime
@@ -238,6 +239,8 @@ model Booking {
   room_name       String
   room_type       String
   room_number     Json
+  created_at      DateTime? @default(now())
+  updated_at      DateTime? @updatedAt
 
   lodge   Lodge    @relation(fields: [lodge_id], references: [lodge_id])
   user    User     @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])

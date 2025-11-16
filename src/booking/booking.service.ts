@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaClient, BookingStatus } from '@prisma/client';
 import { CreateBookingDto } from './dto/create-booking.dto';
 
@@ -6,6 +6,7 @@ const prisma = new PrismaClient();
 
 @Injectable()
 export class BookingService {
+
  async createBooking(dto: CreateBookingDto) {
   const {
     lodge_id,
@@ -19,6 +20,7 @@ export class BookingService {
     gst,
     amount,
     advance,
+    deposite,
     check_in,
     check_out,
     ...rest
@@ -31,6 +33,7 @@ export class BookingService {
   // Convert numeric and date fields
   const numericBalance = Number(balance);
   const numericBaseAmount = Number(baseamount);
+  const numericDeposite = Number(deposite);
   const numericGst = Number(gst);
   const numericAmount = Number(amount);
   const numericAdvance = Number(advance);
@@ -71,6 +74,7 @@ export class BookingService {
       gst: numericGst,
       amount: numericAmount,
       advance: numericAdvance,
+      deposite:numericDeposite,
       check_in: checkInDate,
       check_out: checkOutDate,
       status: 'BOOKED',
@@ -80,7 +84,60 @@ export class BookingService {
     },
   });
 
+  if (numericAdvance > 0) {
+    await prisma.income.create({
+      data: {
+        lodge_id,
+        user_id,
+        reason: `Advance for booking #${booking.booking_id}`,
+        amount: numericAdvance,
+        type: "BOOKING",
+      },
+    });
+  }
+
+  // Deposit income (ONLY IF > 0)
+  if (numericDeposite > 0) {
+    await prisma.income.create({
+      data: {
+        lodge_id,
+        user_id,
+        reason: `Deposit for booking #${booking.booking_id}`,
+        amount: numericDeposite,
+        type: "BOOKING",
+      },
+    });
+  }
+  
   return booking;
 }
+async getLatestBookingByPhone(lodgeId: number, phone: string) {
+    if (!lodgeId || !phone) {
+      throw new BadRequestException('lodgeId and phone are required');
+    }
 
+    // Fetch the latest booking for the given phone and lodge
+    const latestBooking = await prisma.booking.findFirst({
+      where: {
+        lodge_id: lodgeId,
+        phone: phone,
+      },
+      orderBy: {
+        created_at: 'desc', // newest first
+      },
+      select: {
+        name: true,
+        phone: true,
+        alternate_phone: true,
+        email: true,
+        address: true,
+      },
+    });
+
+    if (!latestBooking) {
+      throw new NotFoundException('No booking found for this phone number');
+    }
+
+    return latestBooking;
+}
 }

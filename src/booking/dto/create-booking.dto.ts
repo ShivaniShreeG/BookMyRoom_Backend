@@ -68,6 +68,9 @@ export class CreateBookingDto {
   @IsNumber()
   balance: number; // frontend sends lowercase, will map in service
 
+  @IsNumber()
+  deposite: number;
+
   @IsString()
   room_name: string;
 

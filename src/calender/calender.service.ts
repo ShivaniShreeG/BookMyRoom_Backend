@@ -1,4 +1,4 @@
-import { Injectable ,BadRequestException} from '@nestjs/common';
+import { Injectable ,BadRequestException, NotFoundException} from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -6,72 +6,80 @@ const prisma = new PrismaClient();
 @Injectable()
 export class CalenderService {
 
-  async getAvailableRooms(
-    lodgeId: number,
-    checkIn: Date,
-    checkOut: Date
-  ) {
+async getAvailableRooms(
+  lodgeId: number,
+  checkIn: Date,
+  checkOut: Date
+) {
+  // 1️⃣ Get all rooms for the lodge
+  const rooms = await prisma.rooms.findMany({
+    where: { lodge_id: lodgeId },
+    select: {
+      room_type: true,
+      room_name: true,
+      room_number: true, // JSON array
+    },
+  });
 
-    // 1. All rooms in lodge
-    const rooms = await prisma.rooms.findMany({
-      where: { lodge_id: lodgeId },
-      select: {
-        room_type: true,
-        room_name: true,
-        room_number: true,
-      },
-    });
+  // 2️⃣ Get overlapping bookings for the lodge
+  const overlapping = await prisma.booking.findMany({
+    where: {
+      lodge_id: lodgeId,
+      status: { in: ["BOOKED", "PREBOOKED", "BILLED"] },
+      // interval overlap check
+      check_in: { lt: checkOut },  // existing booking starts before requested checkOut
+      check_out: { gt: checkIn },  // existing booking ends after requested checkIn
+    },
+    select: { room_number: true },
+  });
 
-    // 2. Find overlapping bookings (date + time)
-    const overlapping = await prisma.booking.findMany({
-      where: {
-        lodge_id: lodgeId,
-        status: { in: ["BOOKED", "PREBOOKED", "BILLED"] },
-        check_in: { lte: checkOut },   // booking starts before checkout
-        check_out: { gte: checkIn },   // booking ends after checkin
-      },
-      select: { room_number: true },
-    });
+  // 3️⃣ Flatten booked room numbers from JSON arrays
+  const booked = new Set<string>();
+  overlapping.forEach(b => {
+    if (Array.isArray(b.room_number)) {
+      b.room_number.forEach(n => booked.add(String(n)));
+    } else if (b.room_number) {
+      booked.add(String(b.room_number));
+    }
+  });
 
-    const booked = new Set(overlapping.map(b => String(b.room_number)));
+  // 4️⃣ Group rooms by type + name and calculate available rooms
+  const result = new Map<string, {
+    room_type: string;
+    room_name: string;
+    available_rooms: string[];
+    total_rooms: number;
+    all_room_numbers: string[];
+  }>();
 
-    // 3. Group rooms by type + name
-    const result = new Map<
-      string,
-      {
-        room_type: string;
-        room_name: string;
-        available_rooms: string[];
-        total_rooms: number;
-      }
-    >();
+  rooms.forEach(room => {
+    const key = `${room.room_type}-${room.room_name}`;
+    const numbers: string[] = Array.isArray(room.room_number)
+      ? room.room_number.map(String)
+      : [String(room.room_number)];
 
-    rooms.forEach(room => {
-      const key = `${room.room_type}-${room.room_name}`;
-      const numbers = Array.isArray(room.room_number)
-        ? room.room_number
-        : [room.room_number];
+    const available = numbers.filter(n => !booked.has(n));
 
-      const avail = numbers
-        .map(n => String(n))
-        .filter(n => !booked.has(n));
+    if (!result.has(key)) {
+      result.set(key, {
+        room_type: room.room_type,
+        room_name: room.room_name,
+        available_rooms: available,
+        total_rooms: numbers.length,
+        all_room_numbers: numbers,
+      });
+    } else {
+      const grp = result.get(key)!;
+      grp.available_rooms.push(...available);
+      grp.total_rooms += numbers.length;
+      grp.all_room_numbers.push(...numbers);
+    }
+  });
 
-      if (!result.has(key)) {
-        result.set(key, {
-          room_type: room.room_type,
-          room_name: room.room_name,
-          available_rooms: avail,
-          total_rooms: numbers.length,
-        });
-      } else {
-        const grp = result.get(key)!;
-        grp.available_rooms.push(...avail);
-        grp.total_rooms += numbers.length;
-      }
-    });
+  return Array.from(result.values());
+}
 
-    return Array.from(result.values());
-  }
+
 
 async calculateRoomPrice(dto: any) {
   const lodge_id = Number(dto.lodge_id);
