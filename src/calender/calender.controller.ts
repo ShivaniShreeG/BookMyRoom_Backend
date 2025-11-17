@@ -24,7 +24,7 @@ export class CalenderController {
   // ✔ Calculate pricing
   @Post('calculate-pricing')
   @HttpCode(200)                   // <- force 200 instead of default 201
-  async calculate(@Body() dto: any) {
+  async calculate(@Body() dto: CalculatePricingDto) {
     return this.calenderService.calculateRoomPrice(dto);
   }
 

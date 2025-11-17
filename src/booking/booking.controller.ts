@@ -5,6 +5,8 @@ import { diskStorage } from 'multer';
 import { join, extname } from 'path';
 import * as fs from 'fs';
 import type { Request } from 'express';
+import { CreateBookingDto } from './dto/create-booking.dto';
+import { PreBookingDto } from './dto/pre-booking.dto';
 
 @Controller('booking')
 export class BookingController {
@@ -30,7 +32,7 @@ export class BookingController {
   )
   async createBooking(
     @UploadedFiles() files: Express.Multer.File[],
-    @Body() body: any, // use any to parse JSON strings in multipart
+    @Body() body: CreateBookingDto, // use any to parse JSON strings in multipart
     @Req() req: Request
   ) {
     if (!files || files.length === 0) throw new BadRequestException('At least one ID proof is required');
@@ -83,6 +85,54 @@ export class BookingController {
 
     return { message: 'Booking created successfully', booking };
   }
+
+     @Post('pre-book')
+ async createPreBooking(@Body() body: PreBookingDto) {
+  if (!body) {
+    throw new BadRequestException('Request body is required');
+  }
+
+  if (!body.room_number) {
+    throw new BadRequestException('room_number is required');
+  }
+
+  // Ensure room_number is array
+  let roomNumbers: string[] = [];
+  if (typeof body.room_number === 'string') {
+    try {
+      roomNumbers = JSON.parse(body.room_number);
+    } catch {
+      throw new BadRequestException('Invalid room_number format');
+    }
+  } else if (Array.isArray(body.room_number)) {
+    roomNumbers = body.room_number;
+  } else {
+    throw new BadRequestException('room_number must be an array');
+  }
+
+  // Parse specification safely
+  let specObj: any = {};
+  if (body.specification) {
+    if (typeof body.specification === 'string') {
+      try {
+        specObj = JSON.parse(body.specification);
+      } catch {
+        throw new BadRequestException('Invalid specification format');
+      }
+    } else {
+      specObj = body.specification;
+    }
+  }
+
+  const booking = await this.bookingService.createPreBooking({
+    ...body,
+    room_number: roomNumbers,
+    specification: specObj,
+  });
+
+  return { message: 'PreBooking created successfully', booking };
+}
+
 
      @Get('latest/:lodgeId/:phone')
 async getLatestBooking(

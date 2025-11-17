@@ -79,8 +79,6 @@ async getAvailableRooms(
   return Array.from(result.values());
 }
 
-
-
 async calculateRoomPrice(dto: any) {
   const lodge_id = Number(dto.lodge_id);
   const room_name = dto.room_name;
