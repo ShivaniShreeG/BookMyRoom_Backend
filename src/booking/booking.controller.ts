@@ -141,5 +141,11 @@ async getLatestBooking(
 ) {
   return this.bookingService.getLatestBookingByPhone(lodgeId, phone);
 }
+@Get('prebooked/:lodgeId')
+async getPreBooked(
+  @Param('lodgeId', ParseIntPipe) lodgeId: number,
+) {
+  return this.bookingService.getPreBookedData(lodgeId);
+}
 
 }

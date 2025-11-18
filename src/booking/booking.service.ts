@@ -213,6 +213,18 @@ async createPreBooking(dto: PreBookingDto) {
     }
   }
 
+  async getPreBookedData(lodgeId: number) {
+  return prisma.booking.findMany({
+    where: {
+      lodge_id: lodgeId,
+      status: "PREBOOKED"
+    },
+    orderBy: {
+      created_at: 'desc'
+    }
+  });
+}
+
  async getLatestBookingByPhone(lodgeId: number, phone: string) {
     if (!lodgeId || !phone) {
       throw new BadRequestException('lodgeId and phone are required');
