@@ -1,53 +1,39 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Delete,
-  Param,
-  ParseIntPipe,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Patch, Delete } from '@nestjs/common';
 import { ExpenseService } from './expense.service';
-import { CreateExpenseDto, UpdateExpenseDto } from './dto/create-expense.dto';
+import { CreateExpenseDto } from './dto/create-expense.dto';
+import { UpdateExpenseDto } from './dto/update-expense.dto';
 
 @Controller('expenses')
 export class ExpenseController {
   constructor(private readonly expenseService: ExpenseService) {}
 
-  // GET /expenses/lodge/:lodgeId → all expenses for a lodge
-  @Get('lodge/:lodgeId')
-  findAllByLodge(@Param('lodgeId', ParseIntPipe) lodgeId: number) {
-    return this.expenseService.findAllByLodge(lodgeId);
-  }
-
-  // GET /expenses/:lodgeId/:expenseId → specific expense
-  @Get(':lodgeId/:expenseId')
-  findOne(
-    @Param('lodgeId', ParseIntPipe) lodgeId: number,
-    @Param('expenseId', ParseIntPipe) expenseId: number,
-  ) {
-    return this.expenseService.findOne(lodgeId, expenseId);
-  }
-
-  // POST /expenses → create new expense
   @Post()
   create(@Body() dto: CreateExpenseDto) {
     return this.expenseService.create(dto);
   }
-
-  // PATCH /expenses/:expenseId → update an expense
-  @Patch(':expenseId')
-  update(
-    @Param('expenseId', ParseIntPipe) expenseId: number,
-    @Body() dto: UpdateExpenseDto,
-  ) {
-    return this.expenseService.update(expenseId, dto);
+  
+  @Get('all/:lodgeId')
+  findAllLodge(@Param('lodgeId') lodgeId: string) {
+    return this.expenseService.findAllLodge(Number(lodgeId));
   }
 
-  // DELETE /expenses/:expenseId → delete an expense
-  @Delete(':expenseId')
-  remove(@Param('expenseId', ParseIntPipe) expenseId: number) {
-    return this.expenseService.remove(expenseId);
+  @Get('lodge/:lodgeId')
+  findAll(@Param('lodgeId') lodgeId: string) {
+    return this.expenseService.findAll(Number(lodgeId));
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.expenseService.findOne(Number(id));
+  }
+
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() dto: UpdateExpenseDto) {
+    return this.expenseService.update(Number(id), dto);
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.expenseService.remove(Number(id));
   }
 }

@@ -25,6 +25,11 @@ enum BookingStatus {
   BILLED
 }
 
+enum ChargesStatus {
+  COMPLETE
+  INCOMPLETE
+}
+
 model Lodge {
   lodge_id   Int       @id @default(autoincrement())
   name       String
@@ -54,6 +59,7 @@ model Lodge {
   SubmitTicket   SubmitTicket[]
   Message        Message[]
   Instruction    Instruction[]
+  charges        Charges[]
 
   @@unique([name, address])
 }
@@ -78,6 +84,7 @@ model User {
   billings      Billing[]
   Drawing       Drawing[]
   SubmitTicket  SubmitTicket[]
+  Charges       Charges[]
 
   @@id([user_id, lodge_id])
 }
@@ -212,7 +219,7 @@ model Rooms {
   lodge Lodge @relation(fields: [lodge_id], references: [lodge_id])
   user  User  @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
 
-  @@unique([lodge_id, room_name,room_type])
+  @@unique([lodge_id, room_name, room_type])
 }
 
 model Booking {
@@ -224,7 +231,7 @@ model Booking {
   alternate_phone Json?
   email           String?
   address         String
-  deposite        Float @default(0)
+  deposite        Float         @default(0)
   numberofguest   Int
   specification   Json?
   check_in        DateTime
@@ -239,13 +246,14 @@ model Booking {
   room_name       String
   room_type       String
   room_number     Json
-  created_at      DateTime? @default(now())
-  updated_at      DateTime? @updatedAt
+  created_at      DateTime?     @default(now())
+  updated_at      DateTime?     @updatedAt
 
-  lodge   Lodge    @relation(fields: [lodge_id], references: [lodge_id])
-  user    User     @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
+  lodge   Lodge     @relation(fields: [lodge_id], references: [lodge_id])
+  user    User      @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
   cancel  Cancel?
   billing Billing?
+  Charges Charges[]
 
   @@id([booking_id, lodge_id]) // composite primary key (unique pair)
 }
@@ -317,6 +325,24 @@ model Message {
   created_at DateTime @default(now())
 
   lodge Lodge @relation(fields: [lodge_id], references: [lodge_id])
+}
+
+model Charges {
+  id         Int       @id @default(autoincrement())
+  lodge_id   Int
+  user_id    String
+  booking_id Int
+  reason     String
+  amount     Float
+  status     ChargesStatus
+  created_at DateTime  @default(now())
+  updated_at DateTime? @updatedAt
+
+  lodge   Lodge   @relation(fields: [lodge_id], references: [lodge_id])
+  user    User    @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
+  booking Booking @relation(fields: [booking_id, lodge_id], references: [booking_id, lodge_id])
+
+  @@index([booking_id, lodge_id])
 }
 
 model Instruction {

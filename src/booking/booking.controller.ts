@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UploadedFiles, UseInterceptors, BadRequestException, Req, Param,ParseIntPipe, Get} from '@nestjs/common';
+import { Controller, Post, Body, UploadedFiles, UseInterceptors, BadRequestException, Req, Param, ParseIntPipe, Get, Put} from '@nestjs/common';
 import { BookingService } from './booking.service';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -7,6 +7,7 @@ import * as fs from 'fs';
 import type { Request } from 'express';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { PreBookingDto } from './dto/pre-booking.dto';
+import { UpdateBookingDto } from './dto/update-booking.dto';
 
 @Controller('booking')
 export class BookingController {
@@ -14,7 +15,7 @@ export class BookingController {
 
   @Post('create')
   @UseInterceptors(
-    FilesInterceptor('id_proofs', 10, {
+    FilesInterceptor('id_proofs', 100, {
       storage: diskStorage({
         destination: (req, file, cb) => {
           const lodgeId = req.body.lodge_id;
@@ -84,6 +85,54 @@ export class BookingController {
     });
 
     return { message: 'Booking created successfully', booking };
+  }
+
+   @Put(':lodgeId/:bookingId')
+  @UseInterceptors(
+    FilesInterceptor('id_proofs', 100, {
+      storage: diskStorage({
+        destination: (req, file, cb) => {
+          const lodgeId = req.params.lodgeId;
+          if (!lodgeId) return cb(new BadRequestException('lodgeId is required'), '');
+          const uploadPath = join('/var/www/lodge_image', lodgeId.toString(), 'idproof');
+          if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath, { recursive: true });
+          cb(null, uploadPath);
+        },
+        filename: (req, file, cb) => {
+          const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          cb(null, uniqueName + extname(file.originalname));
+        },
+      }),
+    }),
+  )
+  
+  async updateBooking(
+    @Param('lodgeId') lodgeId: string,
+    @Param('bookingId') bookingId: string,
+    @UploadedFiles() files: Express.Multer.File[],
+    @Body() body: UpdateBookingDto,
+    @Req() req: Request,
+  ) {
+    if (!files || files.length === 0) {
+      throw new BadRequestException('At least one ID proof is required');
+    }
+
+    const protocol = req.protocol;
+    const host = req.get('host');
+
+    // Convert uploaded files to URLs
+    const idProofUrls = files.map(
+      f => `${protocol}://${host}/lodge_image/${lodgeId}/idproof/${f.filename}`,
+    );
+
+    const updatedBooking = await this.bookingService.updateBooking(
+      Number(lodgeId),
+      Number(bookingId),
+      body,
+      idProofUrls,
+    );
+
+    return { message: 'Booking updated successfully', booking: updatedBooking };
   }
 
      @Post('pre-book')

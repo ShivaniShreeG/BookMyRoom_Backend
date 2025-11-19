@@ -1,11 +1,11 @@
 import { IsOptional, IsString, IsNumber } from 'class-validator';
 import { Transform } from 'class-transformer';
 
-export class UpdateIncomeDto {
-  // @IsOptional()
-  // @Transform(({ value }) => Number(value))
-  // @IsNumber()
-  // lodge_id?: number;
+export class UpdateDrawingDto {
+//   @IsOptional()
+//   @Transform(({ value }) => Number(value))
+//   @IsNumber()
+//   lodge_id?: number;
 
   @IsOptional()
   @IsString()
@@ -19,4 +19,8 @@ export class UpdateIncomeDto {
   @Transform(({ value }) => Number(value))
   @IsNumber()
   amount?: number;
+
+  @IsOptional()
+  @IsString()
+  type?: string;
 }

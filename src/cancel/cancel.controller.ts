@@ -1,15 +1,33 @@
-import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe, Post, Body } from '@nestjs/common';
 import { CancelService } from './cancel.service';
+import { CalculateCancelDto } from './dto/calculate.dto';
 
 @Controller('cancels')
 export class CancelController {
   constructor(private readonly cancelService: CancelService) {}
 
-  // 🔹 1️⃣ Get all cancellations
+  @Post()
+  async createCancel(@Body() dto: CalculateCancelDto) {
+    return this.cancelService.createCancel(dto);
+  }
+  
+  @Get('prebooked/:lodgeId')
+async getPreBooked(
+  @Param('lodgeId', ParseIntPipe) lodgeId: number,
+) {
+  return this.cancelService.getPreBookedData(lodgeId);
+}
+
+@Post('cancel-price')
+  async calculateCancel(@Body() dto: CalculateCancelDto) {
+    return this.cancelService.calculateCancelCharge(dto);
+  }
+
   @Get()
   findAll() {
     return this.cancelService.findAll();
   }
+
 
   // 🔹 2️⃣ Get cancellations for a specific lodge
   @Get('lodge/:lodge_id')

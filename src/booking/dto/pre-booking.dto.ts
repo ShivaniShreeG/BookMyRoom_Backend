@@ -37,6 +37,8 @@ export class PreBookingDto {
   @IsNotEmpty()
   address: string;
 
+  @IsNumber()
+  numberofguest: number;
 
   @ValidateNested()
   @Type(() => SpecificationDto)

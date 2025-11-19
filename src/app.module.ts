@@ -23,6 +23,10 @@ import { ProfileModule } from './profile/profile.module';
 import { SubmitTicketModule } from './submit/submit.module';
 import { InstructionModule } from './instruction/instructions.module';
 import { CalenderModule } from './calender/calender.module';
+import { DrawingModule } from './drawing/drawing.module';
+import { ChargesModule } from './charges/charges.module';
+import { HomeModule } from './home/home.module';
+import { HistoryModule } from './history/history.module';
 
 @Module({
   imports: [
@@ -47,7 +51,11 @@ import { CalenderModule } from './calender/calender.module';
     MessageModule,
     SubmitTicketModule,
     InstructionModule,
-    CalenderModule
+    CalenderModule,
+    DrawingModule,
+    ChargesModule,
+    HomeModule,
+    HistoryModule
   ],
   controllers: [AppController],
   providers: [AppService],

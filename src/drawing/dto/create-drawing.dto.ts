@@ -1,7 +1,7 @@
 import { IsNotEmpty, IsOptional, IsString, IsNumber } from 'class-validator';
 import { Transform } from 'class-transformer';
 
-export class CreateIncomeDto {
+export class CreateDrawingDto {
   @IsNotEmpty()
   @Transform(({ value }) => Number(value))
   @IsNumber()

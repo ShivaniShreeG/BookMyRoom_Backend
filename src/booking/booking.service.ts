@@ -1,7 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException ,InternalServerErrorException} from '@nestjs/common';
 import { PrismaClient, BookingStatus } from '@prisma/client';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { PreBookingDto } from './dto/pre-booking.dto';
+import { UpdateBookingDto } from './dto/update-booking.dto';
 
 const prisma = new PrismaClient();
 
@@ -112,6 +113,44 @@ export class BookingService {
   
   return booking;
 }
+async updateBooking(
+  lodgeId: number,
+  bookingId: number,
+  dto: UpdateBookingDto,
+  newIdProofs: string[],
+) {
+  try {
+    const existingBooking = await prisma.booking.findUnique({
+      where: { booking_id_lodge_id: { booking_id: bookingId, lodge_id: lodgeId } },
+    });
+
+    if (!existingBooking) {
+      console.error(`Booking not found: lodgeId=${lodgeId}, bookingId=${bookingId}`);
+      throw new BadRequestException('Booking not found');
+    }
+
+    // Ensure existing ID proofs is an array
+    const existingProofs = Array.isArray(existingBooking.id_proof)
+      ? existingBooking.id_proof
+      : [];
+
+    const updatedBooking = await prisma.booking.update({
+  where: { booking_id_lodge_id: { booking_id: bookingId, lodge_id: lodgeId } },
+  data: {
+    numberofguest: dto.numberofguest ? Number(dto.numberofguest) : existingBooking.numberofguest,
+    deposite: dto.deposite ? parseFloat(dto.deposite.toString()) : existingBooking.deposite,
+    id_proof: [...existingProofs, ...newIdProofs],
+    status: 'BOOKED',
+  },
+});
+
+
+    return updatedBooking;
+  } catch (err) {
+    console.error('Error updating booking:', err);
+    throw new InternalServerErrorException('Failed to update booking');
+  }
+}
 
 async createPreBooking(dto: PreBookingDto) {
     const {
@@ -129,6 +168,7 @@ async createPreBooking(dto: PreBookingDto) {
       name,
       phone,
       address,
+      numberofguest,
       room_name,
       room_type,
       email,
@@ -142,6 +182,7 @@ async createPreBooking(dto: PreBookingDto) {
       const numericGst = Number(gst) || 0;
       const numericAmount = Number(amount) || 0;
       const numericAdvance = Number(advance) || 0;
+      const numericGuests = Number(numberofguest) || 0;
 
       // Convert dates
       const checkInDate = new Date(check_in);
@@ -190,7 +231,7 @@ async createPreBooking(dto: PreBookingDto) {
           check_in: checkInDate,
           check_out: checkOutDate,
           status: 'PREBOOKED',
-          numberofguest: 0,
+          numberofguest:numericGuests,
         },
       });
 
@@ -213,15 +254,25 @@ async createPreBooking(dto: PreBookingDto) {
     }
   }
 
-  async getPreBookedData(lodgeId: number) {
+async getPreBookedData(lodgeId: number) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
   return prisma.booking.findMany({
     where: {
       lodge_id: lodgeId,
-      status: "PREBOOKED"
+      status: "PREBOOKED",
+      check_in: {
+        gte: today,       // >= today 00:00:00
+        lt: tomorrow,     // < tomorrow 00:00:00
+      },
     },
     orderBy: {
-      created_at: 'desc'
-    }
+      created_at: "desc",
+    },
   });
 }
 
