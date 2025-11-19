@@ -23,6 +23,8 @@ enum BookingStatus {
   BOOKED
   CANCEL
   BILLED
+  VACATE
+  PARTIAL
 }
 
 enum ChargesStatus {
@@ -246,14 +248,16 @@ model Booking {
   room_name       String
   room_type       String
   room_number     Json
+  notes           Json?
   created_at      DateTime?     @default(now())
   updated_at      DateTime?     @updatedAt
 
-  lodge   Lodge     @relation(fields: [lodge_id], references: [lodge_id])
-  user    User      @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
-  cancel  Cancel?
-  billing Billing?
-  Charges Charges[]
+  lodge    Lodge     @relation(fields: [lodge_id], references: [lodge_id])
+  user     User      @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
+  cancel   Cancel?   @relation(fields: [cancelId], references: [id])
+  billing  Billing?
+  Charges  Charges[]
+  cancelId Int?
 
   @@id([booking_id, lodge_id]) // composite primary key (unique pair)
 }
@@ -269,11 +273,10 @@ model Cancel {
   refund        Float
   created_at    DateTime @default(now())
 
-  lodge   Lodge   @relation(fields: [lodge_id], references: [lodge_id])
-  user    User    @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
-  booking Booking @relation(fields: [booking_id, lodge_id], references: [booking_id, lodge_id])
+  lodge Lodge @relation(fields: [lodge_id], references: [lodge_id])
+  user  User  @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
 
-  @@unique([booking_id, lodge_id]) // required for 1:1 relation
+  Booking Booking[]
 }
 
 model Billing {
@@ -296,7 +299,7 @@ model Billing {
 model Drawing {
   id         Int       @id @default(autoincrement())
   lodge_id   Int
-  user_id    String // <-- missing in your version
+  user_id    String
   reason     String
   amount     Float
   type       String?
@@ -328,15 +331,15 @@ model Message {
 }
 
 model Charges {
-  id         Int       @id @default(autoincrement())
+  id         Int           @id @default(autoincrement())
   lodge_id   Int
   user_id    String
   booking_id Int
   reason     String
   amount     Float
   status     ChargesStatus
-  created_at DateTime  @default(now())
-  updated_at DateTime? @updatedAt
+  created_at DateTime      @default(now())
+  updated_at DateTime?     @updatedAt
 
   lodge   Lodge   @relation(fields: [lodge_id], references: [lodge_id])
   user    User    @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])

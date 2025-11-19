@@ -25,7 +25,7 @@ async getAvailableRooms(
   const overlapping = await prisma.booking.findMany({
     where: {
       lodge_id: lodgeId,
-      status: { in: ["BOOKED", "PREBOOKED", "BILLED"] },
+      status: { in: ["BOOKED", "PREBOOKED", "BILLED","PARTIAL"] },
       // interval overlap check
       check_in: { lt: checkOut },  // existing booking starts before requested checkOut
       check_out: { gt: checkIn },  // existing booking ends after requested checkIn

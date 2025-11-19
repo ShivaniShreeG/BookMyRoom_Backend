@@ -235,7 +235,8 @@ async createPreBooking(dto: PreBookingDto) {
         },
       });
 
-       if (numericAdvance > 0) {
+       if (numericAdvance > 0) 
+        {
     await prisma.income.create({
       data: {
         lodge_id,
