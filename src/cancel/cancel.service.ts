@@ -52,17 +52,17 @@ export class CancelService {
       });
 
       // 3️⃣ Insert into Expense if refund > 0
-      if (refund && refund > 0) {
-        await tx.expense.create({
-          data: {
-            lodge_id: lodgeId,
-            user_id:userId,
-            type: 'cancel',
-            reason: `Refund for booking ${bookingId}`,
-            amount: refund,
-          },
-        });
-      }
+      // if (refund && refund > 0) {
+      //   await tx.expense.create({
+      //     data: {
+      //       lodge_id: lodgeId,
+      //       user_id:userId,
+      //       type: 'cancel',
+      //       reason: `Refund for booking ${bookingId}`,
+      //       amount: refund,
+      //     },
+      //   });
+      // }
 
       return cancel;
     });
