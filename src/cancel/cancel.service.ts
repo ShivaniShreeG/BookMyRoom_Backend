@@ -214,17 +214,17 @@ async calculateCancelCharge(dto: CalculateCancelDto) {
     cancelledAt: new Date(),
   },
 },
-        status: "PARTIAL",
       },
     });
 
     // 4️⃣ Insert into Cancel table
-    const cancel = await tx.cancel.create({
+    const cancel = await tx.partialCancel.create({
       data: {
         booking_id: bookingId,
         lodge_id: lodgeId,
         user_id: userId,
         reason: reason ?? "Partially cancelled rooms",
+        room_number:roomNumbers,
         amount_paid: amountPaid ?? 0,
         cancel_charge: cancelCharge ?? 0,
         refund: refund ?? 0,

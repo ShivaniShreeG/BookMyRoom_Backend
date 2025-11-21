@@ -10,4 +10,10 @@ export class HomeController {
   async getFinanceSummary(@Param('lodgeId', ParseIntPipe) lodgeId: number) {
     return this.homeService.getFinanceSummary(lodgeId);
   }
+   @Get('availability/7days/:lodgeId')
+  async getNext7DaysAvailability(
+    @Param('lodgeId', ParseIntPipe) lodgeId: number
+  ) {
+    return this.homeService.getRoomCountsForNext7Days(lodgeId);
+  }
 }

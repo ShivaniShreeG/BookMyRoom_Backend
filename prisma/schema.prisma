@@ -23,8 +23,6 @@ enum BookingStatus {
   BOOKED
   CANCEL
   BILLED
-  VACATE
-  PARTIAL
 }
 
 enum ChargesStatus {
@@ -62,6 +60,7 @@ model Lodge {
   Message        Message[]
   Instruction    Instruction[]
   charges        Charges[]
+  PartialCancel  PartialCancel[]
 
   @@unique([name, address])
 }
@@ -73,7 +72,7 @@ model User {
   password  String
   is_active Boolean @default(true)
 
-  lodge         Lodge          @relation(fields: [lodge_id], references: [lodge_id])
+  lodge         Lodge           @relation(fields: [lodge_id], references: [lodge_id])
   admin         Admin?
   administrator Administrator?
   expenses      Expense[]
@@ -87,6 +86,7 @@ model User {
   Drawing       Drawing[]
   SubmitTicket  SubmitTicket[]
   Charges       Charges[]
+  PartialCancel PartialCancel[]
 
   @@id([user_id, lodge_id])
 }
@@ -252,14 +252,15 @@ model Booking {
   created_at      DateTime?     @default(now())
   updated_at      DateTime?     @updatedAt
 
-  lodge    Lodge     @relation(fields: [lodge_id], references: [lodge_id])
-  user     User      @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
-  cancel   Cancel?   @relation(fields: [cancelId], references: [id])
-  billing  Billing?
-  Charges  Charges[]
-  cancelId Int?
+  lodge          Lodge           @relation(fields: [lodge_id], references: [lodge_id])
+  user           User            @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
+  cancel         Cancel?         @relation(fields: [cancelId], references: [id])
+  billing        Billing?
+  Charges        Charges[]
+  cancelId       Int?
+  PartialCancels PartialCancel[] // 1 booking → Many partial cancels
 
-  @@id([booking_id, lodge_id]) // composite primary key (unique pair)
+  @@id([booking_id, lodge_id])
 }
 
 model Cancel {
@@ -277,6 +278,25 @@ model Cancel {
   user  User  @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
 
   Booking Booking[]
+}
+
+model PartialCancel {
+  id            Int      @id @default(autoincrement())
+  booking_id    Int
+  lodge_id      Int
+  user_id       String
+  reason        String
+  room_number   Json
+  amount_paid   Float
+  cancel_charge Float
+  refund        Float
+  created_at    DateTime @default(now())
+
+  lodge   Lodge   @relation(fields: [lodge_id], references: [lodge_id])
+  user    User    @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
+  booking Booking @relation(fields: [booking_id, lodge_id], references: [booking_id, lodge_id])
+
+  @@index([booking_id, lodge_id])
 }
 
 model Billing {
