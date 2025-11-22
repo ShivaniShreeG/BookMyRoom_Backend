@@ -236,6 +236,7 @@ model Booking {
   deposite        Float         @default(0)
   numberofguest   Int
   specification   Json?
+  aadhar_number   Json?
   check_in        DateTime
   check_out       DateTime
   baseamount      Float

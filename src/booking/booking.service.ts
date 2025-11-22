@@ -20,6 +20,7 @@ export class BookingService {
     numberofguest,
     baseamount,
     gst,
+    aadhar_number, // 👈 Add this
     amount,
     advance,
     deposite,
@@ -78,6 +79,7 @@ export class BookingService {
       advance: numericAdvance,
       deposite:numericDeposite,
       check_in: checkInDate,
+      aadhar_number: aadhar_number ?? [],
       check_out: checkOutDate,
       status: 'BOOKED',
       room_number: rooms,
@@ -113,10 +115,12 @@ export class BookingService {
   
   return booking;
 }
+
 async updateBooking(
   lodgeId: number,
   bookingId: number,
   dto: UpdateBookingDto,
+  aadhar_number: string[],
   newIdProofs: string[],
 ) {
   try {
@@ -125,25 +129,38 @@ async updateBooking(
     });
 
     if (!existingBooking) {
-      console.error(`Booking not found: lodgeId=${lodgeId}, bookingId=${bookingId}`);
       throw new BadRequestException('Booking not found');
     }
 
-    // Ensure existing ID proofs is an array
     const existingProofs = Array.isArray(existingBooking.id_proof)
       ? existingBooking.id_proof
       : [];
 
     const updatedBooking = await prisma.booking.update({
-  where: { booking_id_lodge_id: { booking_id: bookingId, lodge_id: lodgeId } },
-  data: {
-    numberofguest: dto.numberofguest ? Number(dto.numberofguest) : existingBooking.numberofguest,
-    deposite: dto.deposite ? parseFloat(dto.deposite.toString()) : existingBooking.deposite,
-    id_proof: [...existingProofs, ...newIdProofs],
-    status: 'BOOKED',
-  },
-});
+      where: {
+        booking_id_lodge_id: {
+          booking_id: bookingId,
+          lodge_id: lodgeId,
+        },
+      },
+      data: {
+        numberofguest:
+          dto.numberofguest !== undefined
+            ? Number(dto.numberofguest)
+            : existingBooking.numberofguest,
 
+        deposite:
+          dto.deposite !== undefined
+            ? Number(dto.deposite)
+            : existingBooking.deposite,
+
+        aadhar_number: aadhar_number ?? existingBooking.aadhar_number,
+
+        id_proof: [...existingProofs, ...newIdProofs],
+
+        status: 'BOOKED',
+      },
+    });
 
     return updatedBooking;
   } catch (err) {
@@ -151,6 +168,8 @@ async updateBooking(
     throw new InternalServerErrorException('Failed to update booking');
   }
 }
+
+
 
 async createPreBooking(dto: PreBookingDto) {
     const {

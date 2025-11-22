@@ -49,6 +49,10 @@ export class CreateBookingDto {
   @Type(() => Date)
   check_in: Date;
 
+  @IsOptional()
+  aadhar_number?: any; // accept string or array in controller
+
+
   @IsDate()
   @Type(() => Date)
   check_out: Date;

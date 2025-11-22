@@ -56,6 +56,16 @@ export class BookingController {
       roomNumbers = body.room_number;
     }
 
+let aadhaarNumbers: string[] = [];
+
+if (typeof body.aadhar_number === 'string') {
+  aadhaarNumbers = JSON.parse(body.aadhar_number);
+} else if (Array.isArray(body.aadhar_number)) {
+  aadhaarNumbers = body.aadhar_number;
+}
+
+
+
     // Parse specification safely
     let specObj: any = {};
     if (body.specification) {
@@ -81,6 +91,7 @@ export class BookingController {
       lodge_id: lodgeId,
       room_number: roomNumbers,
       specification: specObj,
+      aadhar_number: aadhaarNumbers, // 👈 FIX: Pass parsed array
       id_proofs: idProofUrls,
     });
 
@@ -107,33 +118,50 @@ export class BookingController {
   )
   
   async updateBooking(
-    @Param('lodgeId') lodgeId: string,
-    @Param('bookingId') bookingId: string,
-    @UploadedFiles() files: Express.Multer.File[],
-    @Body() body: UpdateBookingDto,
-    @Req() req: Request,
-  ) {
-    if (!files || files.length === 0) {
-      throw new BadRequestException('At least one ID proof is required');
-    }
-
-    const protocol = req.protocol;
-    const host = req.get('host');
-
-    // Convert uploaded files to URLs
-    const idProofUrls = files.map(
-      f => `${protocol}://${host}/lodge_image/${lodgeId}/idproof/${f.filename}`,
-    );
-
-    const updatedBooking = await this.bookingService.updateBooking(
-      Number(lodgeId),
-      Number(bookingId),
-      body,
-      idProofUrls,
-    );
-
-    return { message: 'Booking updated successfully', booking: updatedBooking };
+  @Param('lodgeId') lodgeId: string,
+  @Param('bookingId') bookingId: string,
+  @UploadedFiles() files: Express.Multer.File[],
+  @Body() body: UpdateBookingDto,
+  @Req() req: Request,
+) {
+  if (!files || files.length === 0) {
+    throw new BadRequestException('At least one ID proof is required');
   }
+
+  const protocol = req.protocol;
+  const host = req.get('host');
+
+  let aadhaarNumbers: string[] = [];
+
+  if (typeof body.aadhar_number === 'string') {
+    try {
+      aadhaarNumbers = JSON.parse(body.aadhar_number);
+    } catch {
+      throw new BadRequestException('Invalid aadhar_number format');
+    }
+  } else if (Array.isArray(body.aadhar_number)) {
+    aadhaarNumbers = body.aadhar_number;
+  }
+
+  // Convert uploaded files to URLs
+  const idProofUrls = files.map(
+    f => `${protocol}://${host}/lodge_image/${lodgeId}/idproof/${f.filename}`,
+  );
+
+  const updatedBooking = await this.bookingService.updateBooking(
+  Number(lodgeId),
+  Number(bookingId),
+  {
+    ...body,
+    aadhar_number: aadhaarNumbers,
+  },
+  aadhaarNumbers,
+  idProofUrls,
+);
+
+  return { message: 'Booking updated successfully', booking: updatedBooking };
+}
+
 
      @Post('pre-book')
  async createPreBooking(@Body() body: PreBookingDto) {
