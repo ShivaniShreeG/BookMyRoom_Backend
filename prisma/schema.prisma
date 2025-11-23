@@ -208,6 +208,8 @@ model DefaultValue {
 
   lodge Lodge @relation(fields: [lodge_id], references: [lodge_id])
   user  User  @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
+
+  @@unique([type, lodge_id, reason])
 }
 
 model Rooms {
@@ -255,10 +257,9 @@ model Booking {
 
   lodge          Lodge           @relation(fields: [lodge_id], references: [lodge_id])
   user           User            @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
-  cancel         Cancel?         @relation(fields: [cancelId], references: [id])
+  cancel         Cancel?
   billing        Billing?
   Charges        Charges[]
-  cancelId       Int?
   PartialCancels PartialCancel[] // 1 booking → Many partial cancels
 
   @@id([booking_id, lodge_id])
@@ -275,10 +276,11 @@ model Cancel {
   refund        Float
   created_at    DateTime @default(now())
 
-  lodge Lodge @relation(fields: [lodge_id], references: [lodge_id])
-  user  User  @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
+  lodge   Lodge   @relation(fields: [lodge_id], references: [lodge_id])
+  user    User    @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
+  booking Booking @relation(fields: [booking_id, lodge_id], references: [booking_id, lodge_id])
 
-  Booking Booking[]
+  @@unique([booking_id, lodge_id]) // REQUIRED for 1:1
 }
 
 model PartialCancel {

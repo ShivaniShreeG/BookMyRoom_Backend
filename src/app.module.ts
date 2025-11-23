@@ -27,6 +27,7 @@ import { DrawingModule } from './drawing/drawing.module';
 import { ChargesModule } from './charges/charges.module';
 import { HomeModule } from './home/home.module';
 import { HistoryModule } from './history/history.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -55,7 +56,8 @@ import { HistoryModule } from './history/history.module';
     DrawingModule,
     ChargesModule,
     HomeModule,
-    HistoryModule
+    HistoryModule,
+    DashboardModule
   ],
   controllers: [AppController],
   providers: [AppService],
