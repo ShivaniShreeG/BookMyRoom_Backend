@@ -248,12 +248,14 @@ model Booking {
   Balance         Float
   status          BookingStatus
   id_proof        Json?
-  room_name       String
-  room_type       String
-  room_number     Json
+  booked_room     Json?
+  room_name       String?
+  room_type       String?
+  room_number     Json?
   notes           Json?
   created_at      DateTime?     @default(now())
   updated_at      DateTime?     @updatedAt
+  room_amount     Json?
 
   lodge          Lodge           @relation(fields: [lodge_id], references: [lodge_id])
   user           User            @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])

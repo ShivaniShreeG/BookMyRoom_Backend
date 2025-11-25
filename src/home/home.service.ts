@@ -122,6 +122,92 @@ export class HomeService {
     return result;
   }
 
+  async getCurrentRoomAvailability(lodgeId: number) {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
+  // 🔹 Fetch all rooms and group them
+  const rooms = await prisma.rooms.findMany({
+    where: { lodge_id: lodgeId },
+    select: {
+      room_type: true,
+      room_name: true,
+      room_number: true,
+    }
+  });
+
+  interface RoomGroup {
+    room_type: string;
+    room_name: string;
+    total_rooms: string[];
+  }
+
+  const groups = new Map<string, RoomGroup>();
+
+  rooms.forEach(r => {
+    const key = `${r.room_type}-${r.room_name}`;
+    const nums = Array.isArray(r.room_number)
+      ? r.room_number.map(String)
+      : [String(r.room_number)];
+
+    if (!groups.has(key)) {
+      groups.set(key, {
+        room_type: r.room_type,
+        room_name: r.room_name,
+        total_rooms: nums,
+      });
+    } else {
+      const g = groups.get(key)!;
+      g.total_rooms.push(...nums);
+    }
+  });
+
+  // 🔹 Fetch only active bookings that overlap today
+  const bookings = await prisma.booking.findMany({
+    where: {
+      lodge_id: lodgeId,
+      status: { in: ["BOOKED", "PREBOOKED", "BILLED"] },
+      check_in: { lte: now },
+      check_out: { gt: now },
+    },
+    select: { booked_room: true },
+  });
+
+  // 📌 Create a Set of all booked room numbers today
+  const bookedToday = new Set<string>();
+
+  bookings.forEach(b => {
+  if (Array.isArray(b.booked_room)) {
+    b.booked_room.forEach(entry => {
+
+      if (!entry || !Array.isArray(entry) || entry.length < 3) return;
+
+      const nums = Array.isArray(entry[2]) ? entry[2] : [];
+
+      nums.forEach(n => bookedToday.add(String(n)));
+    });
+  }
+});
+
+  // 🔹 Prepare response
+  const result: any[] = [];
+
+  groups.forEach(g => {
+    const bookedCount = g.total_rooms.filter(n => bookedToday.has(n)).length;
+    const availCount = g.total_rooms.length - bookedCount;
+
+    result.push({
+      room_type: g.room_type,
+      room_name: g.room_name,
+      total: g.total_rooms.length,
+      booked: bookedCount,
+      available: availCount,
+    });
+  });
+
+  return result;
+}
+
   async getFinanceSummary(lodgeId: number) {
     // Check if lodge exists
     const lodge = await prisma.lodge.findUnique({ where: { lodge_id: lodgeId } });

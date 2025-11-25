@@ -16,4 +16,10 @@ export class HomeController {
   ) {
     return this.homeService.getRoomCountsForNext7Days(lodgeId);
   }
+  @Get('availability/:lodgeId')
+  async getCurrentRoomAvailability (
+    @Param('lodgeId', ParseIntPipe) lodgeId: number
+  ) {
+    return this.homeService.getCurrentRoomAvailability(lodgeId);
+  }
 }

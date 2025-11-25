@@ -28,9 +28,7 @@ export class CalenderController {
     return this.calenderService.calculateRoomPrice(dto);
   }
 
-  // ------------------------------------------
-  // UPDATE PRICING (User changes pricing type)
-  // ------------------------------------------
+
   @Post("update-pricing")
   @HttpCode(200)                   // <- force 200 instead of default 201
   async updatePricing(@Body() dto: UpdatePricingDto) {

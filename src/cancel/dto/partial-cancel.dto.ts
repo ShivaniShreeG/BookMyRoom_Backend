@@ -10,7 +10,7 @@ export class PartialCancelDto {
   @IsString()
   userId: string;
 
-  roomNumbers: any[];   // the rooms that should be removed
+  roomNumbers: any[];   
   
   @IsOptional()
   @IsString()

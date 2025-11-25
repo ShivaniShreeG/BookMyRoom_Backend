@@ -170,12 +170,12 @@ async calculateCancelCharge(dto: CalculateCancelDto) {
     });
   }
 
-  async partialCancel(dto: PartialCancelDto) {
+async partialCancel(dto: PartialCancelDto) {
   const {
     bookingId,
     lodgeId,
     userId,
-    roomNumbers,
+    roomNumbers,      // 👈 structured selected rooms
     reason,
     amountPaid,
     cancelCharge,
@@ -191,53 +191,96 @@ async calculateCancelCharge(dto: CalculateCancelDto) {
       },
     });
 
-    if (!booking) {
-      throw new NotFoundException("Booking not found");
-    }
+    if (!booking) throw new NotFoundException("Booking not found");
 
-    // 2️⃣ Remove the cancelled room numbers from existing booking
-    const existingRooms = booking.room_number as any[];
-    const updatedRooms = existingRooms.filter(
-      (room) => !roomNumbers.includes(room)
-    );
+    const bookedRooms = booking.booked_room as any[];
+    const roomAmount = booking.room_amount as any[];
 
-    // 3️⃣ Update Booking
+    // 2️⃣ Update booked_room by removing cancelled numbers
+    const updatedBookedRooms = bookedRooms
+      .map((item) => {
+        const [roomName, roomType, nums] = item;
+
+        const cancelEntry = roomNumbers.find(
+          (r) => r.room_name === roomName && r.room_type === roomType
+        );
+
+        if (!cancelEntry) return item;
+
+        const remaining = nums.filter(
+          (n: string) => !cancelEntry.room_numbers.includes(n)
+        );
+
+        return [roomName, roomType, remaining];
+      })
+      .filter((item) => item[2].length > 0); // remove empty groups
+
+    // 3️⃣ Build detailed cancellation note
+    const cancelledDetails = roomNumbers.map((r) => {
+      const amt = roomAmount.find(
+        (a) => a.room_name === r.room_name && a.room_type === r.room_type
+      );
+
+      const price = amt ? amt.base_amount_per_room : 0;
+      const total = price * r.room_numbers.length;
+
+      return {
+        room_name: r.room_name,
+        room_type: r.room_type,
+        cancelled_numbers: r.room_numbers,
+        base_amount_per_room: price,
+        total_cancel_value: total
+      };
+    });
+
+    const noteEntry = {
+      message: "Partial Cancellation",
+      reason,
+      cancelledAt: new Date(),
+      cancelled_rooms: cancelledDetails,
+      total_refund: refund ?? 0,
+      cancel_charge: cancelCharge ?? 0,
+      amount_paid: amountPaid ?? 0
+    };
+
+    const oldNotes =
+      typeof booking.notes === "object" && booking.notes !== null
+        ? booking.notes
+        : {};
+
+    // 4️⃣ Update only booked_room + notes
     const updatedBooking = await tx.booking.update({
       where: { booking_id_lodge_id: { booking_id: bookingId, lodge_id: lodgeId } },
       data: {
-        room_number: updatedRooms,
-       notes: {
-  ...(typeof booking.notes === "object" && booking.notes !== null ? booking.notes : {}),
-  partial_cancel: {
-    removedRooms: roomNumbers,
-    reason,
-    cancelledAt: new Date(),
-  },
-},
+        booked_room: updatedBookedRooms,
+        notes: {
+          ...oldNotes,
+          partial_cancel: noteEntry,
+        },
       },
     });
 
-    // 4️⃣ Insert into Cancel table
+    // 5️⃣ log partial cancellation
     const cancel = await tx.partialCancel.create({
       data: {
         booking_id: bookingId,
         lodge_id: lodgeId,
         user_id: userId,
-        reason: reason ?? "Partially cancelled rooms",
-        room_number:roomNumbers,
+        reason: reason ?? "Partial room cancellation",
+        room_number: cancelledDetails,  // store detailed summary
         amount_paid: amountPaid ?? 0,
         cancel_charge: cancelCharge ?? 0,
         refund: refund ?? 0,
       },
     });
 
-    // 5️⃣ Insert into Expense table for refund
+    // 6️⃣ Add expense entry for refund
     if (refund && refund > 0) {
       await tx.expense.create({
         data: {
           lodge_id: lodgeId,
           user_id: userId,
-          reason: `Refund for partially cancellation #${bookingId}`,
+          reason: `Refund for partial cancellation #${bookingId}`,
           type: "PARTIAL_CANCEL",
           amount: refund,
         },
@@ -246,8 +289,8 @@ async calculateCancelCharge(dto: CalculateCancelDto) {
 
     return {
       message: "Partial cancellation successful",
-      booking: updatedBooking,
       cancel,
+      booking: updatedBooking,
     };
   });
 }

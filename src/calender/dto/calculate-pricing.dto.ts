@@ -1,4 +1,4 @@
-import { IsNumber, IsString, IsOptional, IsNotEmpty } from "class-validator";
+import { IsNumber, IsString, IsNotEmpty, IsArray, ArrayNotEmpty } from "class-validator";
 
 export class CalculatePricingDto {
   
@@ -7,24 +7,17 @@ export class CalculatePricingDto {
 
   @IsString()
   @IsNotEmpty()
-  room_name: string;
+  check_in: string;
 
   @IsString()
   @IsNotEmpty()
-  room_type: string;
+  check_out: string;
 
-  @IsString()
-  @IsNotEmpty()
-  check_in: string;     // ISO datetime
-
-  @IsString()
-  @IsNotEmpty()
-  check_out: string;    // ISO datetime
+  @IsArray()
+  @ArrayNotEmpty()
+  rooms: any[]; // [ [room_name, room_type, [numbers]] ]
 
   @IsNumber()
-  room_count: number;
-
-  @IsOptional()
-  @IsNumber()
-  override_base_amount?: number; // optional from frontend
+  @IsNotEmpty()
+  override_base_amount?: number;
 }

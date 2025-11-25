@@ -1,27 +1,23 @@
-import { IsNotEmpty, IsNumber, IsString } from "class-validator";
+import { IsNotEmpty, IsNumber, IsString, IsArray, ArrayNotEmpty } from "class-validator";
 
 export class UpdatePricingDto {
+
   @IsNumber()
   lodge_id: number;
 
   @IsString()
   @IsNotEmpty()
-  room_name: string;
+  pricing_type: string;  // "NORMAL" | "PEAK_HOUR"
 
   @IsString()
   @IsNotEmpty()
-  room_type: string;
-
-  @IsString()
-  @IsNotEmpty()
-  pricing_type: string;   // "NORMAL" or "PEAK_HOUR"
-
-  @IsNumber()
-  room_count: number;
-
-  @IsString()
   check_in: string;
 
   @IsString()
+  @IsNotEmpty()
   check_out: string;
+
+  @IsArray()
+  @ArrayNotEmpty()
+  rooms: any[];
 }

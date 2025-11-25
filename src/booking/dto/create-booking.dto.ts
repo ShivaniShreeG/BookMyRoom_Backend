@@ -1,12 +1,39 @@
-import { IsString, IsNotEmpty, IsOptional, IsNumber, IsArray, IsDate, ValidateNested } from 'class-validator';
+import { 
+  IsString, 
+  IsNotEmpty, 
+  IsOptional, 
+  IsNumber, 
+  IsArray, 
+  IsDate, 
+  ValidateNested 
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
-class SpecificationDto {
+export class SpecificationDto {
   @IsNumber()
   number_of_days: number;
 
   @IsNumber()
   number_of_rooms: number;
+}
+
+export class RoomGroupDto {
+  @IsString()
+  @IsNotEmpty()
+  room_name: string;
+
+  @IsString()
+  @IsNotEmpty()
+  room_type: string;
+
+  @IsNumber()
+  room_count: number;
+
+  @IsNumber()
+  base_amount_per_room: number;
+
+  @IsNumber()
+  group_total_base_amount: number;
 }
 
 export class CreateBookingDto {
@@ -40,18 +67,12 @@ export class CreateBookingDto {
   @IsNumber()
   numberofguest: number;
 
-  @ValidateNested()
-  @Type(() => SpecificationDto)
   @IsOptional()
-  specification?: SpecificationDto;
+  specification?: any; // <-- Change to any to pass JSON to Prisma
 
   @IsDate()
   @Type(() => Date)
   check_in: Date;
-
-  @IsOptional()
-  aadhar_number?: any; // accept string or array in controller
-
 
   @IsDate()
   @Type(() => Date)
@@ -70,22 +91,23 @@ export class CreateBookingDto {
   advance: number;
 
   @IsNumber()
-  balance: number; // frontend sends lowercase, will map in service
+  balance: number;
 
   @IsNumber()
   deposite: number;
 
-  @IsString()
-  room_name: string;
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => RoomGroupDto)
+  rooms: RoomGroupDto[];
 
-  @IsString()
-  room_type: string;
+  @IsArray()
+  booked_rooms: any[]; // You can specify nested array type if you want
 
   @IsArray()
   @IsString({ each: true })
-  room_number: string[];
+  id_proofs: string[];
 
-  @IsArray()
-  @IsString({ each: true })
-  id_proofs: string[]; // URLs after uploading
+  @IsOptional()
+  aadhar_number?: string[]; // <-- Add this to fix TS error
 }

@@ -1,7 +1,9 @@
-import { IsString, IsNotEmpty, IsOptional, IsNumber, IsArray, IsDate, ValidateNested } from 'class-validator';
+import { 
+  IsString, IsNotEmpty, IsOptional, IsNumber, IsArray, IsDate, ValidateNested 
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
-class SpecificationDto {
+export class SpecificationDto {
   @IsNumber()
   number_of_days: number;
 
@@ -9,7 +11,26 @@ class SpecificationDto {
   number_of_rooms: number;
 }
 
-export class PreBookingDto {
+export class RoomGroupDto {
+  @IsString()
+  @IsNotEmpty()
+  room_name: string;
+
+  @IsString()
+  @IsNotEmpty()
+  room_type: string;
+
+  @IsNumber()
+  room_count: number;
+
+  @IsNumber()
+  base_amount_per_room: number;
+
+  @IsNumber()
+  group_total_base_amount: number;
+}
+
+export class CreatePreBookingDto {
   @IsNumber()
   lodge_id: number;
 
@@ -40,10 +61,8 @@ export class PreBookingDto {
   @IsNumber()
   numberofguest: number;
 
-  @ValidateNested()
-  @Type(() => SpecificationDto)
   @IsOptional()
-  specification?: SpecificationDto;
+  specification?: any; // JSON safe for Prisma
 
   @IsDate()
   @Type(() => Date)
@@ -66,16 +85,14 @@ export class PreBookingDto {
   advance: number;
 
   @IsNumber()
-  balance: number; // frontend sends lowercase, will map in service
-
-  @IsString()
-  room_name: string;
-
-  @IsString()
-  room_type: string;
+  balance: number;
 
   @IsArray()
-  @IsString({ each: true })
-  room_number: string[];
+  @ValidateNested({ each: true })
+  @Type(() => RoomGroupDto)
+  rooms: RoomGroupDto[];
+
+  @IsArray()
+  booked_rooms: any[]; // nested rooms array
 
 }

@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException, NotFoundException ,InternalServerErrorException} from '@nestjs/common';
 import { PrismaClient, BookingStatus } from '@prisma/client';
 import { CreateBookingDto } from './dto/create-booking.dto';
-import { PreBookingDto } from './dto/pre-booking.dto';
+import { CreatePreBookingDto } from './dto/pre-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
 
 const prisma = new PrismaClient();
@@ -13,14 +13,15 @@ export class BookingService {
   const {
     lodge_id,
     user_id,
+    rooms,
+    booked_rooms,
     id_proofs,
-    room_number,
     specification,
     balance,
     numberofguest,
     baseamount,
     gst,
-    aadhar_number, // 👈 Add this
+    aadhar_number,
     amount,
     advance,
     deposite,
@@ -44,19 +45,6 @@ export class BookingService {
   const checkInDate = new Date(check_in);
   const checkOutDate = new Date(check_out);
 
-  // Ensure room_numbers is an array
-  const rooms = Array.isArray(room_number) ? room_number : [];
-
-  // Parse specification if it's a string
-  let specObj = {};
-  if (specification) {
-    if (typeof specification === 'string') {
-      specObj = JSON.parse(specification);
-    } else {
-      specObj = { ...specification };
-    }
-  }
-
   // Auto-increment booking_id per lodge
   const lastBooking = await prisma.booking.findFirst({
     where: { lodge_id },
@@ -64,7 +52,15 @@ export class BookingService {
     select: { booking_id: true },
   });
   const newBookingId = lastBooking ? lastBooking.booking_id + 1 : 1;
+const roomAmountJson = dto.rooms.map(room => ({
+  room_name: room.room_name,
+  room_type: room.room_type,
+  room_count: room.room_count,
+  base_amount_per_room: room.base_amount_per_room,
+  group_total_base_amount: room.group_total_base_amount,
+}));
 
+  // Create booking
   const booking = await prisma.booking.create({
     data: {
       booking_id: newBookingId,
@@ -77,17 +73,19 @@ export class BookingService {
       gst: numericGst,
       amount: numericAmount,
       advance: numericAdvance,
-      deposite:numericDeposite,
+      deposite: numericDeposite,
       check_in: checkInDate,
-      aadhar_number: aadhar_number ?? [],
       check_out: checkOutDate,
       status: 'BOOKED',
-      room_number: rooms,
+      room_amount: roomAmountJson,  // ✅ plain objects now
+      booked_room:booked_rooms,   // nested array
       id_proof: id_proofs,
-      specification: specObj,
+      aadhar_number: aadhar_number || [],
+      specification,
     },
   });
 
+  // Create income records for advance
   if (numericAdvance > 0) {
     await prisma.income.create({
       data: {
@@ -100,7 +98,7 @@ export class BookingService {
     });
   }
 
-  // Deposit income (ONLY IF > 0)
+  // Create income record for deposit
   if (numericDeposite > 0) {
     await prisma.income.create({
       data: {
@@ -112,9 +110,10 @@ export class BookingService {
       },
     });
   }
-  
+
   return booking;
 }
+
 
 async updateBooking(
   lodgeId: number,
@@ -169,110 +168,115 @@ async updateBooking(
   }
 }
 
+async createPreBooking(dto: CreatePreBookingDto) {
+  const {
+    lodge_id,
+    user_id,
+    rooms,
+    booked_rooms,
+    specification,
+    balance,
+    baseamount,
+    gst,
+    amount,
+    advance,
+    check_in,
+    check_out,
+    name,
+    phone,
+    address,
+    numberofguest,
+    email,
+    alternate_phone,
+  } = dto;
 
+  try {
+    // Convert numeric fields
+    const numericBalance = Number(balance) || 0;
+    const numericBaseAmount = Number(baseamount) || 0;
+    const numericGst = Number(gst) || 0;
+    const numericAmount = Number(amount) || 0;
+    const numericAdvance = Number(advance) || 0;
+    const numericGuests = Number(numberofguest) || 0;
 
-async createPreBooking(dto: PreBookingDto) {
-    const {
-      lodge_id,
-      user_id,
-      room_number,
-      specification,
-      balance,
-      baseamount,
-      gst,
-      amount,
-      advance,
-      check_in,
-      check_out,
-      name,
-      phone,
-      address,
-      numberofguest,
-      room_name,
-      room_type,
-      email,
-      alternate_phone,
-    } = dto;
+    // Convert dates
+    const checkInDate = new Date(check_in);
+    const checkOutDate = new Date(check_out);
+    if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) {
+      throw new BadRequestException('Invalid check_in or check_out date');
+    }
+    const lodgeIdNumber = Number(lodge_id);
+if (isNaN(lodgeIdNumber)) {
+  throw new BadRequestException('Invalid lodge_id. Must be a number.');
+}
 
-    try {
-      // Convert numeric fields
-      const numericBalance = Number(balance) || 0;
-      const numericBaseAmount = Number(baseamount) || 0;
-      const numericGst = Number(gst) || 0;
-      const numericAmount = Number(amount) || 0;
-      const numericAdvance = Number(advance) || 0;
-      const numericGuests = Number(numberofguest) || 0;
+    // Parse specification safely
+    const specObj = specification || {};
 
-      // Convert dates
-      const checkInDate = new Date(check_in);
-      const checkOutDate = new Date(check_out);
-      if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) {
-        throw new BadRequestException('Invalid check_in or check_out date');
-      }
+    // Auto-increment booking_id per lodge
+    const lastBooking = await prisma.booking.findFirst({
+  where: { lodge_id: lodgeIdNumber },
+      orderBy: { booking_id: 'desc' },
+      select: { booking_id: true },
+    });
+    const newBookingId = lastBooking ? lastBooking.booking_id + 1 : 1;
 
-      // Parse specification
-      const specObj =
-        specification && typeof specification === 'string'
-          ? JSON.parse(specification)
-          : specification || {};
+    // Prepare room_amount JSON from rooms array
+    const roomAmountJson = Array.isArray(rooms)
+      ? rooms.map(room => ({
+          room_name: room.room_name,
+          room_type: room.room_type,
+          room_count: room.room_count,
+          base_amount_per_room: room.base_amount_per_room,
+          group_total_base_amount: room.group_total_base_amount,
+        }))
+      : [];
 
-      // Ensure room_number is array
-      const rooms = Array.isArray(room_number) ? room_number : [];
-
-      // Auto-increment booking_id per lodge
-      const lastBooking = await prisma.booking.findFirst({
-        where: { lodge_id },
-        orderBy: { booking_id: 'desc' },
-        select: { booking_id: true },
-      });
-      const newBookingId = lastBooking ? lastBooking.booking_id + 1 : 1;
-
-      // Create booking
-      const booking = await prisma.booking.create({
-        data: {
-          booking_id: newBookingId,
-          lodge_id,
-          user_id,
-          name,
-          phone,
-          address,
-          room_name,
-          room_type,
-          email: email || '',
-          alternate_phone: alternate_phone || '',
-          room_number: rooms,
-          specification: specObj,
-          Balance: numericBalance,
-          baseamount: numericBaseAmount,
-          gst: numericGst,
-          amount: numericAmount,
-          advance: numericAdvance,
-          check_in: checkInDate,
-          check_out: checkOutDate,
-          status: 'PREBOOKED',
-          numberofguest:numericGuests,
-        },
-      });
-
-       if (numericAdvance > 0) 
-        {
-    await prisma.income.create({
+    // Create booking
+    const booking = await prisma.booking.create({
       data: {
-        lodge_id,
+        booking_id: newBookingId,
+        lodge_id: lodgeIdNumber, // ✅ Use the number here
         user_id,
-        reason: `Advance for booking #${booking.booking_id}`,
-        amount: numericAdvance,
-        type: "BOOKING",
+        name,
+        phone,
+        address,
+        email: email || '',
+        alternate_phone: alternate_phone || '',
+        room_amount: roomAmountJson,
+        booked_room: booked_rooms || [],
+        specification: specObj,
+        Balance: numericBalance,
+        baseamount: numericBaseAmount,
+        gst: numericGst,
+        amount: numericAmount,
+        advance: numericAdvance,
+        check_in: checkInDate,
+        check_out: checkOutDate,
+        status: 'PREBOOKED',
+        numberofguest: numericGuests,
       },
     });
-  }
-      return booking;
-      
-    } catch (error) {
-      console.error('PreBooking creation failed:', error);
-      throw new BadRequestException('Internal Server Error. Check server logs.');
+
+    // Record advance if any
+    if (numericAdvance > 0) {
+      await prisma.income.create({
+        data: {
+      lodge_id: lodgeIdNumber, // ✅ convert to number
+          user_id,
+          reason: `Advance for pre-booking #${booking.booking_id}`,
+          amount: numericAdvance,
+          type: 'PREBOOK',
+        },
+      });
     }
+
+    return booking;
+  } catch (error) {
+    console.error('PreBooking creation failed:', error);
+    throw new BadRequestException('Internal Server Error. Check server logs.');
   }
+}
 
 async getPreBookedData(lodgeId: number) {
   const today = new Date();
@@ -286,8 +290,8 @@ async getPreBookedData(lodgeId: number) {
       lodge_id: lodgeId,
       status: "PREBOOKED",
       check_in: {
-        gte: today,       // >= today 00:00:00
-        lt: tomorrow,     // < tomorrow 00:00:00
+        gte: today,       
+        lt: tomorrow,     
       },
     },
     orderBy: {
