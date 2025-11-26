@@ -2,9 +2,36 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
+function extractRoomNumbersFromBookedRoomEntry(entry: any): string[] {
+  if (Array.isArray(entry)) {
+    const maybeNums = entry.length >= 3 ? entry[2] : undefined;
 
+    if (Array.isArray(maybeNums)) {
+      return maybeNums.map((n: any) => String(n)).filter(Boolean);
+    }
+
+    if (typeof maybeNums === "string" || typeof maybeNums === "number") {
+      return String(maybeNums)
+        .split(",")
+        .map(s => s.trim())
+        .filter(Boolean);
+    }
+
+    return [];
+  }
+
+  if (typeof entry === "string" || typeof entry === "number") {
+    return String(entry)
+      .split(",")
+      .map(s => s.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+}
 @Injectable()
 export class HomeService {
+  
 
  async getRoomCountsForNext7Days(lodgeId: number) {
 
@@ -122,91 +149,102 @@ export class HomeService {
     return result;
   }
 
-  async getCurrentRoomAvailability(lodgeId: number) {
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
+async getCurrentRoomAvailability(lodgeId: number) {
 
-  // 🔹 Fetch all rooms and group them
+  // 🔹 Define today range
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const endOfToday = new Date(startOfToday);
+  endOfToday.setDate(endOfToday.getDate() + 1);
+
+
+  // 🔹 Fetch all rooms
   const rooms = await prisma.rooms.findMany({
     where: { lodge_id: lodgeId },
     select: {
-      room_type: true,
       room_name: true,
+      room_type: true,
       room_number: true,
     }
   });
 
+
+  // 🔹 Group rooms by (room_name + room_type)
   interface RoomGroup {
-    room_type: string;
     room_name: string;
+    room_type: string;
     total_rooms: string[];
   }
 
   const groups = new Map<string, RoomGroup>();
 
   rooms.forEach(r => {
-    const key = `${r.room_type}-${r.room_name}`;
+    const key = `${r.room_name}-${r.room_type}`;
     const nums = Array.isArray(r.room_number)
       ? r.room_number.map(String)
       : [String(r.room_number)];
 
     if (!groups.has(key)) {
       groups.set(key, {
-        room_type: r.room_type,
         room_name: r.room_name,
+        room_type: r.room_type,
         total_rooms: nums,
       });
     } else {
-      const g = groups.get(key)!;
-      g.total_rooms.push(...nums);
+      groups.get(key)!.total_rooms.push(...nums);
     }
   });
 
-  // 🔹 Fetch only active bookings that overlap today
-  const bookings = await prisma.booking.findMany({
-    where: {
-      lodge_id: lodgeId,
-      status: { in: ["BOOKED", "PREBOOKED", "BILLED"] },
-      check_in: { lte: now },
-      check_out: { gt: now },
-    },
-    select: { booked_room: true },
-  });
 
-  // 📌 Create a Set of all booked room numbers today
+
+  // 🔹 Fetch bookings overlapping today
+  const now = new Date();
+
+const bookings = await prisma.booking.findMany({
+  where: {
+    lodge_id: lodgeId,
+    status: { in: ["BOOKED", "PREBOOKED", "BILLED"] },
+    check_in: { lt: endOfToday },   // booking started before end of today
+    check_out: { gt: now }          // booking has not yet checked out
+  },
+  select: { booked_room: true },
+});
+
+
+  // 🔹 Track booked rooms today
   const bookedToday = new Set<string>();
 
   bookings.forEach(b => {
-  if (Array.isArray(b.booked_room)) {
+    if (!Array.isArray(b.booked_room)) return;
+
     b.booked_room.forEach(entry => {
-
-      if (!entry || !Array.isArray(entry) || entry.length < 3) return;
-
-      const nums = Array.isArray(entry[2]) ? entry[2] : [];
-
-      nums.forEach(n => bookedToday.add(String(n)));
+      const roomNumbers = extractRoomNumbersFromBookedRoomEntry(entry);
+      roomNumbers.forEach(n => bookedToday.add(n));
     });
-  }
-});
+  });
 
-  // 🔹 Prepare response
+
+
+  // 🔹 Prepare final result
   const result: any[] = [];
 
   groups.forEach(g => {
     const bookedCount = g.total_rooms.filter(n => bookedToday.has(n)).length;
-    const availCount = g.total_rooms.length - bookedCount;
 
     result.push({
-      room_type: g.room_type,
       room_name: g.room_name,
+      room_type: g.room_type,
       total: g.total_rooms.length,
       booked: bookedCount,
-      available: availCount,
+      available: g.total_rooms.length - bookedCount,
     });
   });
 
   return result;
 }
+
+
 
   async getFinanceSummary(lodgeId: number) {
     // Check if lodge exists
@@ -254,4 +292,5 @@ export class HomeService {
       currentBalance,
     };
   }
+
 }

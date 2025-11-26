@@ -5,4 +5,5 @@ export class BillingDto {
   reason: any;
   total: number;
   balancePayment: number; // Ex: 100 or -50 or 0
+  payment_method: string;
 }

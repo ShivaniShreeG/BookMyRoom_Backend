@@ -235,7 +235,7 @@ model Booking {
   alternate_phone Json?
   email           String?
   address         String
-  deposite        Float         @default(0)
+  deposite        Float           @default(0)
   numberofguest   Int
   specification   Json?
   aadhar_number   Json?
@@ -253,16 +253,16 @@ model Booking {
   room_type       String?
   room_number     Json?
   notes           Json?
-  created_at      DateTime?     @default(now())
-  updated_at      DateTime?     @updatedAt
+  created_at      DateTime?       @default(now())
+  updated_at      DateTime?       @updatedAt
   room_amount     Json?
-
-  lodge          Lodge           @relation(fields: [lodge_id], references: [lodge_id])
-  user           User            @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
-  cancel         Cancel?
-  billing        Billing?
-  Charges        Charges[]
-  PartialCancels PartialCancel[] // 1 booking → Many partial cancels
+  payment_method  String?
+  lodge           Lodge           @relation(fields: [lodge_id], references: [lodge_id])
+  user            User            @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
+  cancel          Cancel?
+  billing         Billing?
+  Charges         Charges[]
+  PartialCancels  PartialCancel[] // 1 booking → Many partial cancels
 
   @@id([booking_id, lodge_id])
 }
@@ -305,18 +305,18 @@ model PartialCancel {
 }
 
 model Billing {
-  id         Int       @id @default(autoincrement())
-  booking_id Int
-  lodge_id   Int
-  user_id    String
-  reason     Json
-  total      Float
-  created_at DateTime  @default(now())
-  updated_at DateTime? @updatedAt
-
-  lodge   Lodge   @relation(fields: [lodge_id], references: [lodge_id])
-  user    User    @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
-  booking Booking @relation(fields: [booking_id, lodge_id], references: [booking_id, lodge_id])
+  id             Int       @id @default(autoincrement())
+  booking_id     Int
+  lodge_id       Int
+  user_id        String
+  reason         Json
+  total          Float
+  created_at     DateTime  @default(now())
+  updated_at     DateTime? @updatedAt
+  payment_method String?
+  lodge          Lodge     @relation(fields: [lodge_id], references: [lodge_id])
+  user           User      @relation(fields: [user_id, lodge_id], references: [user_id, lodge_id])
+  booking        Booking   @relation(fields: [booking_id, lodge_id], references: [booking_id, lodge_id])
 
   @@unique([booking_id, lodge_id]) // required for 1:1 relation
 }

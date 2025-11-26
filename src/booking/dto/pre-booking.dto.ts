@@ -94,5 +94,8 @@ export class CreatePreBookingDto {
 
   @IsArray()
   booked_rooms: any[]; // nested rooms array
-
+  
+  @IsString()
+  @IsOptional()
+  payment_method: string;
 }

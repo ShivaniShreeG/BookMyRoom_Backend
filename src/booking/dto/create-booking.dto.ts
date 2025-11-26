@@ -93,6 +93,10 @@ export class CreateBookingDto {
   @IsNumber()
   balance: number;
 
+  @IsString()
+  @IsOptional()
+  payment_method: string;
+  
   @IsNumber()
   deposite: number;
 

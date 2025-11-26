@@ -176,6 +176,7 @@ async createPreBooking(dto: CreatePreBookingDto) {
     booked_rooms,
     specification,
     balance,
+    payment_method,
     baseamount,
     gst,
     amount,
@@ -241,6 +242,7 @@ if (isNaN(lodgeIdNumber)) {
         name,
         phone,
         address,
+        payment_method,
         email: email || '',
         alternate_phone: alternate_phone || '',
         room_amount: roomAmountJson,
@@ -255,6 +257,7 @@ if (isNaN(lodgeIdNumber)) {
         check_out: checkOutDate,
         status: 'PREBOOKED',
         numberofguest: numericGuests,
+    
       },
     });
 

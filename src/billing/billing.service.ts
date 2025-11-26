@@ -13,6 +13,7 @@ async createBillingAndUpdateStatus(
   reason: any,
   total: number | null,
   balancePayment: number | null,
+  payment_method: string |null,
 ) {
   balancePayment = Number(balancePayment) || 0;
 
@@ -32,6 +33,7 @@ async createBillingAndUpdateStatus(
           booking_id,
           reason: reason ?? null,
           total: total ?? 0,
+          payment_method,
         },
       });
     }

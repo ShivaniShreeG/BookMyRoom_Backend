@@ -14,7 +14,8 @@ async billingHandler(@Body() dto: BillingDto) {
     dto.booking_id,
     dto.reason,
     dto.total,
-    dto.balancePayment
+    dto.balancePayment,
+    dto.payment_method,
   );
 }
 
