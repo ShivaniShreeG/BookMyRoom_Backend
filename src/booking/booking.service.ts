@@ -3,11 +3,77 @@ import { PrismaClient, BookingStatus } from '@prisma/client';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { CreatePreBookingDto } from './dto/pre-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
+import { UpdateDateDto } from './dto/update-date.dto';
 
 const prisma = new PrismaClient();
 
 @Injectable()
 export class BookingService {
+
+async updateBookingDate(dto: UpdateDateDto) {
+  const { booking_id, lodge_id, check_in, check_out, updated_rooms } = dto;
+
+  const checkInDate = new Date(check_in);
+  const checkOutDate = new Date(check_out);
+
+  if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) {
+    throw new BadRequestException("Invalid date format");
+  }
+
+  if (checkOutDate <= checkInDate) {
+    throw new BadRequestException("Checkout cannot be before checkin");
+  }
+
+  const numericBookingId = Number(booking_id);
+  const numericLodgeId = Number(lodge_id);
+
+  // 1️⃣ Find old booking
+  const oldBooking = await prisma.booking.findFirst({
+    where: {
+      booking_id: numericBookingId,
+      lodge_id: numericLodgeId,
+    },
+  });
+
+  if (!oldBooking) {
+    throw new NotFoundException("Booking not found");
+  }
+
+  try {
+    // 2️⃣ Convert incoming format → [["Room Name","Type",[rooms]]]
+    const formattedRooms = updated_rooms.map(r => [
+      r.room_name,
+      r.room_type,
+      r.rooms
+    ]);
+
+    // 3️⃣ Update booking using composite key
+    const updated = await prisma.booking.update({
+      where: {
+        booking_id_lodge_id: {
+          booking_id: numericBookingId,
+          lodge_id: numericLodgeId,
+        },
+      },
+      data: {
+        check_in: checkInDate,
+        check_out: checkOutDate,
+
+        // Replace old booked rooms with new formatted array
+        booked_room: formattedRooms,
+      },
+    });
+
+    // 4️⃣ Return updated booking
+    return {
+      message: "Booking updated successfully",
+      update_booking: updated,
+    };
+  } catch (err) {
+    console.error(err);
+    throw new InternalServerErrorException("Failed to update booking");
+  }
+}
 
  async createBooking(dto: CreateBookingDto) {
   const {
@@ -113,7 +179,6 @@ const roomAmountJson = dto.rooms.map(room => ({
 
   return booking;
 }
-
 
 async updateBooking(
   lodgeId: number,
@@ -331,6 +396,121 @@ async getPreBookedData(lodgeId: number) {
     }
 
     return latestBooking;
+}
+
+async checkAvailability(data: {
+  lodge_id: number;
+  check_in: string | Date;
+  check_out: string | Date;
+  room_requests: { room_name: string; room_type: string; count: number }[];
+}) {
+  const { lodge_id, check_in, check_out, room_requests } = data;
+
+  const checkIn = new Date(check_in);
+  const checkOut = new Date(check_out);
+
+  if (isNaN(checkIn.getTime()) || isNaN(checkOut.getTime()) || checkIn >= checkOut) {
+    throw new BadRequestException("Invalid date range");
+  }
+
+  // 1️⃣ Fetch all rooms in lodge
+  const allRooms = await prisma.rooms.findMany({
+    where: { lodge_id },
+    select: { room_name: true, room_type: true, room_number: true },
+  });
+
+  // Group rooms
+  const roomGroups = new Map<
+    string,
+    { room_name: string; room_type: string; rooms: string[] }
+  >();
+
+  allRooms.forEach((room) => {
+    const key = `${room.room_name}-${room.room_type}`;
+    const nums = Array.isArray(room.room_number)
+      ? room.room_number.map(String)
+      : [String(room.room_number)];
+
+    if (!roomGroups.has(key)) {
+      roomGroups.set(key, { room_name: room.room_name, room_type: room.room_type, rooms: nums });
+    } else {
+      roomGroups.get(key)!.rooms.push(...nums);
+    }
+  });
+
+  // 2️⃣ Fetch bookings overlapping given time
+  const bookedRooms = new Set<string>();
+
+  const bookings = await prisma.booking.findMany({
+    where: {
+      lodge_id,
+      status: { in: ["BOOKED", "PREBOOKED", "BILLED"] },
+      check_in: { lt: checkOut },
+      check_out: { gt: checkIn },
+    },
+    select: { booked_room: true },
+  });
+
+  bookings.forEach((b) => {
+    if (Array.isArray(b.booked_room)) {
+      b.booked_room.forEach((entry: any) => {
+        const roomNums = entry[2]; // [name, type, [numbers]]
+        if (Array.isArray(roomNums)) {
+          roomNums.forEach((n: any) => bookedRooms.add(String(n)));
+        } else if (roomNums) {
+          bookedRooms.add(String(roomNums));
+        }
+      });
+    }
+  });
+
+  // 3️⃣ Check each requested category
+  const availabilityResult: any[] = [];
+  let allAvailable = true;
+
+  for (const req of room_requests) {
+    const key = `${req.room_name}-${req.room_type}`;
+    const group = roomGroups.get(key);
+
+    if (!group) {
+      allAvailable = false;
+      availabilityResult.push({
+        room_name: req.room_name,
+        room_type: req.room_type,
+        required: req.count,
+        available: 0,
+        rooms: [],
+        message: "Room category not found in lodge",
+      });
+      continue;
+    }
+
+    const freeRooms = group.rooms.filter((r) => !bookedRooms.has(r));
+
+    const availableCount = freeRooms.length;
+
+    if (availableCount < req.count) {
+      allAvailable = false;
+    }
+
+    availabilityResult.push({
+      room_name: req.room_name,
+      room_type: req.room_type,
+      required: req.count,
+      available: availableCount,
+      rooms: freeRooms.slice(0, req.count), // rooms that can be allocated
+      message:
+        availableCount >= req.count
+          ? "Available"
+          : "Not enough rooms available",
+    });
+  }
+
+  return {
+    success: true,
+    all_available: allAvailable,
+    details: availabilityResult,
+  };
 }
 
 }

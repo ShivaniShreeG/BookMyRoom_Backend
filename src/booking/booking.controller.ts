@@ -8,10 +8,32 @@ import type { Request } from 'express';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { CreatePreBookingDto } from './dto/pre-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
+import { UpdateDateDto } from './dto/update-date.dto';
 
 @Controller('booking')
 export class BookingController {
   constructor(private readonly bookingService: BookingService) {}
+
+  @Put('update-date')
+  updateBookingDate(@Body() dto: UpdateDateDto) {
+    return this.bookingService.updateBookingDate(dto);
+  }
+  @Post('check-availability')
+  async checkAvailability(
+    @Body() data: {
+      lodge_id: number;
+      check_in: string | Date;
+      check_out: string | Date;
+      room_requests: { room_name: string; room_type: string; count: number }[];
+    },
+  ) {
+    if (!data.lodge_id || !data.check_in || !data.check_out || !data.room_requests) {
+      throw new BadRequestException('Missing required fields');
+    }
+
+    const result = await this.bookingService.checkAvailability(data);
+    return result;
+  }
 
   @Post('create')
 @UseInterceptors(
