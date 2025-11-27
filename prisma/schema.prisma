@@ -262,7 +262,7 @@ model Booking {
   cancel          Cancel?
   billing         Billing?
   Charges         Charges[]
-  PartialCancels  PartialCancel[] // 1 booking → Many partial cancels
+  PartialCancels  PartialCancel[] 
 
   @@id([booking_id, lodge_id])
 }

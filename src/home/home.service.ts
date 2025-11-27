@@ -32,122 +32,148 @@ function extractRoomNumbersFromBookedRoomEntry(entry: any): string[] {
 @Injectable()
 export class HomeService {
   
+async getRoomCountsForNext7Days(lodgeId: number) {
 
- async getRoomCountsForNext7Days(lodgeId: number) {
+  // 🔹 Step 1 — Fetch all rooms
+  const rooms = await prisma.rooms.findMany({
+    where: { lodge_id: lodgeId },
+    select: {
+      room_name: true,
+      room_type: true,
+      room_number: true,
+    }
+  });
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
 
-    // FIX: days was inferred as never[]
-    const days: Date[] = [];
+  // 🔹 Step 2 — Group rooms
+  type RoomGroup = {
+    room_name: string;
+    room_type: string;
+    total_rooms: string[];
+  };
+
+  const groups = new Map<string, RoomGroup>();
+
+  rooms.forEach(r => {
+    const key = `${r.room_name}-${r.room_type}`;
+    const nums = Array.isArray(r.room_number)
+      ? r.room_number.map(String)
+      : [String(r.room_number)];
+
+    if (!groups.has(key)) {
+      groups.set(key, {
+        room_name: r.room_name,
+        room_type: r.room_type,
+        total_rooms: nums
+      });
+    } else {
+      groups.get(key)!.total_rooms.push(...nums);
+    }
+  });
+
+
+
+  // 🔹 Step 3 — Fetch relevant bookings (7 days)
+  const now = new Date(); // 👉 real current time
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const sevenDaysLater = new Date(startOfToday);
+  sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+
+  const bookings = await prisma.booking.findMany({
+    where: {
+      lodge_id: lodgeId,
+      status: { in: ["BOOKED", "PREBOOKED", "BILLED"] },
+      check_in: { lt: sevenDaysLater },
+      check_out: { gt: now } // today booking still relevant
+    },
+    select: {
+      check_in: true,
+      check_out: true,
+      booked_room: true
+    }
+  });
+
+
+
+  const extractRoomNumbers = (entry: any) => {
+    if (!entry) return [];
+    if (Array.isArray(entry)) return entry.map(String);
+    return [String(entry)];
+  };
+
+
+
+  // 🔹 Step 4 — Build result for next 7 days
+  const result: any[] = [];
+
+  groups.forEach(group => {
+    const days: any[] = [];
+
     for (let i = 0; i < 7; i++) {
-      const d = new Date(today);
-      d.setDate(today.getDate() + i);
-      days.push(d);
-    }
 
-    // FIX: use prisma not this.prisma
-    const rooms = await prisma.rooms.findMany({
-      where: { lodge_id: lodgeId },
-      select: {
-        room_type: true,
-        room_name: true,
-        room_number: true,
-      },
-    });
+      let dayStart: Date;
+      let dayEnd: Date;
 
-    // FIX: define proper map type
-    interface RoomGroup {
-      room_type: string;
-      room_name: string;
-      all_rooms: string[];
-      total: number;
-    }
-
-    const groups = new Map<string, RoomGroup>();
-
-    // Grouping logic
-    rooms.forEach(r => {
-      const key = `${r.room_type}-${r.room_name}`;
-      const numbers = Array.isArray(r.room_number)
-        ? r.room_number.map(String)
-        : [String(r.room_number)];
-
-      if (!groups.has(key)) {
-        groups.set(key, {
-          room_type: r.room_type,
-          room_name: r.room_name,
-          all_rooms: numbers,
-          total: numbers.length,
-        });
+      if (i === 0) {
+        // 🔥 TODAY → start from *current time*
+        dayStart = new Date(now);
+        dayEnd = new Date(startOfToday);
+        dayEnd.setDate(dayEnd.getDate() + 1); // end of today
       } else {
-        const g = groups.get(key)!;
-        g.all_rooms.push(...numbers);
-        g.total += numbers.length;
+        // 🔥 NEXT DAYS → use whole day
+        dayStart = new Date(startOfToday);
+        dayStart.setDate(dayStart.getDate() + i);
+        dayStart.setHours(0, 0, 0, 0);
+
+        dayEnd = new Date(dayStart);
+        dayEnd.setDate(dayEnd.getDate() + 1);
       }
-    });
 
-    // FIX: use prisma not this.prisma
-    const bookings = await prisma.booking.findMany({
-      where: {
-        lodge_id: lodgeId,
-        status: { in: ['BOOKED', 'PREBOOKED', 'BILLED'] },
-        check_in: { lt: new Date(today.getTime() + 7 * 86400000) },
-        check_out: { gt: today },
-      },
-      select: {
-        room_number: true,
-        check_in: true,
-        check_out: true,
-      },
-    });
 
-    const bookedPerDay: Record<string, Set<string>> = {};
+      // Track booked rooms for this day
+      const bookedRooms = new Set<string>();
 
-    days.forEach(d => {
-      bookedPerDay[d.toISOString().slice(0, 10)] = new Set();
-    });
+      bookings.forEach(b => {
+        if (b.check_in < dayEnd && b.check_out > dayStart) {
 
-    bookings.forEach(b => {
-      const bookedRooms = Array.isArray(b.room_number)
-        ? b.room_number.map(String)
-        : [String(b.room_number)];
+          const bookedEntries = Array.isArray(b.booked_room)
+            ? b.booked_room
+            : (b.booked_room ? [b.booked_room] : []);
 
-      days.forEach(d => {
-        const key = d.toISOString().slice(0, 10);
-        if (d >= new Date(b.check_in) && d < new Date(b.check_out)) {
-          bookedRooms.forEach(r => bookedPerDay[key].add(r));
+          bookedEntries.forEach((entry: any) => {
+            const roomNums = extractRoomNumbers(entry);
+            roomNums.forEach(n => bookedRooms.add(String(n)));
+          });
         }
       });
-    });
 
-    const result: any[] = [];
 
-    groups.forEach(g => {
-      const dayCounts = days.map(d => {
-        const dateKey = d.toISOString().slice(0, 10);
-        const bookedToday = bookedPerDay[dateKey];
+      const total = group.total_rooms.length;
+      const unavailableCount = group.total_rooms.filter(n => bookedRooms.has(n)).length;
+      const availableCount = total - unavailableCount;
 
-        const unavailable = g.all_rooms.filter(r => bookedToday.has(r)).length;
-        const available = g.total - unavailable;
 
-        return {
-          date: dateKey,
-          available_count: available,
-          unavailable_count: unavailable,
-        };
+      days.push({
+        date: dayStart.toISOString().split("T")[0],
+        available_count: availableCount,
+        unavailable_count: unavailableCount
       });
+    }
 
-      result.push({
-        room_type: g.room_type,
-        room_name: g.room_name,
-        total_count: g.total,
-        days: dayCounts,
-      });
+
+    result.push({
+      room_type: group.room_type,
+      room_name: group.room_name,
+      total_count: group.total_rooms.length,
+      days
     });
+  });
 
-    return result;
-  }
+  return result;
+}
+
 
 async getCurrentRoomAvailability(lodgeId: number) {
 

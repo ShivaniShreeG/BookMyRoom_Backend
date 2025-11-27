@@ -4,6 +4,6 @@ export class BillingDto {
   booking_id: number;
   reason: any;
   total: number;
-  balancePayment: number; // Ex: 100 or -50 or 0
+  balancePayment: number;
   payment_method: string;
 }
