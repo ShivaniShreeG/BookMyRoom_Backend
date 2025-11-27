@@ -67,8 +67,37 @@ export class ChargesService {
     if (!data) throw new NotFoundException('Charges not found');
     return data;
   }
+
    async remove(id: number) {
     await this.findOne(id);
     return prisma.charges.delete({ where: { id } });
   }
+
+  async checkBookingIsBooked(booking_id: number, lodge_id: number) {
+  const booking = await prisma.booking.findUnique({
+    where: {
+      booking_id_lodge_id: {
+        booking_id,
+        lodge_id,
+      },
+    },
+    select: { status: true },
+  });
+
+  if (!booking) {
+    return { exists: false, isBooked: false, message: "Booking not found" };
+  }
+
+  return {
+    exists: true,
+    isBooked: booking.status === "BOOKED",
+    status: booking.status,
+    message:
+      booking.status === "BOOKED"
+        ? "Booking is BOOKED"
+        : "Booking is NOT BOOKED",
+  };
+}
+
+
 }

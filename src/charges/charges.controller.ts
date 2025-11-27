@@ -13,6 +13,18 @@ export class ChargesController {
     return this.chargesService.create(dto);
   }
 
+  @Get('check')
+checkBooking(
+  @Query('booking_id') booking_id: string,
+  @Query('lodge_id') lodge_id: string,
+) {
+  return this.chargesService.checkBookingIsBooked(
+    Number(booking_id),
+    Number(lodge_id),
+  );
+}
+
+
   // Update charge by id
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateChargesDto) {
