@@ -157,7 +157,7 @@ const roomAmountJson = dto.rooms.map(room => ({
       data: {
         lodge_id,
         user_id,
-        reason: `Advance for booking #${booking.booking_id}`,
+        reason: `Payment for booking #${booking.booking_id}`,
         amount: numericAdvance,
         type: "BOOKING",
       },
@@ -332,7 +332,7 @@ if (isNaN(lodgeIdNumber)) {
         data: {
       lodge_id: lodgeIdNumber, // ✅ convert to number
           user_id,
-          reason: `Advance for pre-booking #${booking.booking_id}`,
+          reason: `Payment for pre-booking #${booking.booking_id}`,
           amount: numericAdvance,
           type: 'PREBOOK',
         },
