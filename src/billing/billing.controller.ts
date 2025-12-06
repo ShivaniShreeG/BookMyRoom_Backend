@@ -6,18 +6,19 @@ import { BillingDto } from './dto/create-billing.dto';
 export class BillingController {
   constructor(private readonly billingService: BillingService) {}
   
-@Post()
-async billingHandler(@Body() dto: BillingDto) {
-  return this.billingService.createBillingAndUpdateStatus(
-    dto.lodge_id,
-    dto.user_id,
-    dto.booking_id,
-    dto.reason,
-    dto.total,
-    dto.balancePayment,
-    dto.payment_method,
-  );
-}
+ @Post()
+  async billingHandler(@Body() dto: BillingDto) {
+    return this.billingService.createBillingAndUpdateStatus(
+      dto.lodge_id,
+      dto.user_id,
+      dto.booking_id,
+      dto.reason,
+      dto.total,
+      dto.balancePayment,
+      dto.payment_method,
+      dto.current_time,   // <-- Send to service
+    );
+  }
 
   @Get('charges/:bookingId')
   async getCharges(@Param('bookingId', ParseIntPipe) bookingId: number) {

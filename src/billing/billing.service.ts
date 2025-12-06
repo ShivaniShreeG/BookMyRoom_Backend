@@ -14,6 +14,7 @@ async createBillingAndUpdateStatus(
   total: number | null,
   balancePayment: number | null,
   payment_method: string | null,
+  current_time?: string, // <- accept optional current time
 ) {
   balancePayment = Number(balancePayment) || 0;
 
@@ -36,7 +37,7 @@ async createBillingAndUpdateStatus(
     }
 
     // ⏱ 2. Compare now() with existing checkout
-    const now = new Date();
+    const now = current_time ? new Date(current_time) : new Date(); // Use frontend time if provided
     let updatedCheckOut = booking.check_out;
     let oldCheckOut = booking.old_check_out ?? null;
 
