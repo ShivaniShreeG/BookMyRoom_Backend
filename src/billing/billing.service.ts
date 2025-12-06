@@ -13,7 +13,7 @@ async createBillingAndUpdateStatus(
   reason: any,
   total: number | null,
   balancePayment: number | null,
-  payment_method: string |null,
+  payment_method: string | null,
 ) {
   balancePayment = Number(balancePayment) || 0;
 
@@ -24,7 +24,29 @@ async createBillingAndUpdateStatus(
   return prisma.$transaction(async (tx) => {
     let billing: Billing | null = null;
 
-    // Create billing only if needed
+    // ⛔ 1. Fetch booking to check checkout time
+    const booking = await tx.booking.findUnique({
+      where: {
+        booking_id_lodge_id: { booking_id, lodge_id },
+      },
+    });
+
+    if (!booking) {
+      throw new Error("Booking not found");
+    }
+
+    // ⏱ 2. Compare now() with existing checkout
+    const now = new Date();
+    let updatedCheckOut = booking.check_out;
+    let oldCheckOut = booking.old_check_out ?? null;
+
+    if (now < booking.check_out) {
+      // Billing BEFORE checkout → early checkout
+      oldCheckOut = booking.check_out;
+      updatedCheckOut = now;
+    }
+
+    // 🧾 3. Create billing only if needed
     if (hasBilling) {
       billing = await tx.billing.create({
         data: {
@@ -38,7 +60,7 @@ async createBillingAndUpdateStatus(
       });
     }
 
-    // Income
+    // 💰 4. Income (positive balance)
     if (balancePayment > 0) {
       await tx.income.create({
         data: {
@@ -51,7 +73,7 @@ async createBillingAndUpdateStatus(
       });
     }
 
-    // Expense
+    // 💸 5. Expense (refund)
     if (balancePayment < 0) {
       await tx.expense.create({
         data: {
@@ -64,16 +86,15 @@ async createBillingAndUpdateStatus(
       });
     }
 
-    // Booking successful
+    // 📌 6. Update booking: status, checkout, old checkout
     await tx.booking.update({
       where: {
-        booking_id_lodge_id: {
-          booking_id,
-          lodge_id,
-        },
+        booking_id_lodge_id: { booking_id, lodge_id },
       },
       data: {
         status: "BILLED",
+        check_out: updatedCheckOut,
+        old_check_out: oldCheckOut,
       },
     });
 
@@ -83,6 +104,8 @@ async createBillingAndUpdateStatus(
       billing,
       booking_id,
       balancePayment,
+      old_check_out: oldCheckOut,
+      new_check_out: updatedCheckOut,
     };
   });
 }

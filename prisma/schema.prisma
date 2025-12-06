@@ -255,6 +255,7 @@ model Booking {
   notes           Json?
   created_at      DateTime?       @default(now())
   updated_at      DateTime?       @updatedAt
+  old_check_out   DateTime?
   room_amount     Json?
   payment_method  String?
   lodge           Lodge           @relation(fields: [lodge_id], references: [lodge_id])
@@ -262,7 +263,7 @@ model Booking {
   cancel          Cancel?
   billing         Billing?
   Charges         Charges[]
-  PartialCancels  PartialCancel[] 
+  PartialCancels  PartialCancel[]
 
   @@id([booking_id, lodge_id])
 }
