@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -32,6 +32,153 @@ function extractRoomNumbersFromBookedRoomEntry(entry: any): string[] {
 @Injectable()
 export class HomeService {
   
+  async getAvailableRooms(lodgeId: number, checkIn: string | Date, checkOut: string | Date) {
+    // 0️⃣ Validate and parse dates
+    const checkInDate = new Date(checkIn);
+    const checkOutDate = new Date(checkOut);
+  
+    if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) {
+      throw new BadRequestException('Invalid check-in or check-out date');
+    }
+  
+    // 1️⃣ Get all rooms for the lodge
+    const rooms = await prisma.rooms.findMany({
+      where: { lodge_id: lodgeId },
+      select: {
+        room_type: true,
+        room_name: true,
+        room_number: true, // JSON array
+      },
+    });
+  
+    // 2️⃣ Get overlapping bookings for the lodge
+    const overlapping = await prisma.booking.findMany({
+      where: {
+        lodge_id: lodgeId,
+        status: { in: ["BOOKED", "PREBOOKED", "BILLED"] },
+        check_in: { lt: checkOutDate },
+        check_out: { gt: checkInDate },
+      },
+      select: { booked_room: true },
+    });
+  
+    // 3️⃣ Flatten booked room numbers from booked_room arrays
+    const booked = new Set<string>();
+  
+    overlapping.forEach(b => {
+      if (Array.isArray(b.booked_room)) {
+        b.booked_room.forEach((entry: any) => {
+          // each entry is like [room_name, room_type, room_numbers]
+          const roomNumbers = entry[2]; 
+          if (Array.isArray(roomNumbers)) {
+            roomNumbers.forEach((n: any) => booked.add(String(n)));
+          } else if (roomNumbers) {
+            booked.add(String(roomNumbers));
+          }
+        });
+      }
+    });
+  
+    // 4️⃣ Group rooms by type + name and calculate available rooms
+    const result = new Map<string, {
+      room_type: string;
+      room_name: string;
+      available_rooms: string[];
+      total_rooms: number;
+      all_room_numbers: string[];
+    }>();
+  
+    rooms.forEach(room => {
+      const key = `${room.room_type}-${room.room_name}`;
+      const numbers: string[] = Array.isArray(room.room_number)
+        ? room.room_number.map(String)
+        : [String(room.room_number)];
+  
+      const available = numbers.filter(n => !booked.has(n));
+  
+      if (!result.has(key)) {
+        result.set(key, {
+          room_type: room.room_type,
+          room_name: room.room_name,
+          available_rooms: available,
+          total_rooms: numbers.length,
+          all_room_numbers: numbers,
+        });
+      } else {
+        const grp = result.get(key)!;
+        grp.available_rooms.push(...available);
+        grp.total_rooms += numbers.length;
+        grp.all_room_numbers.push(...numbers);
+      }
+    });
+  
+    return Array.from(result.values());
+  }
+
+  async get7DayAvailability(
+  lodgeId: number,
+  currentTime: string | Date
+) {
+  const todayNow = new Date(currentTime);
+  if (isNaN(todayNow.getTime())) {
+    throw new BadRequestException("Invalid current time");
+  }
+
+  // Helper to get day start
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+  // Helper to get day end
+  const endOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+
+const results: {
+  day: number;
+  date: string;
+  check_in: Date;
+  check_out: Date;
+  availability: {
+    room_type: string;
+    room_name: string;
+    available_rooms: string[];
+    total_rooms: number;
+    all_room_numbers: string[];
+  }[];
+}[] = [];
+
+  // Loop for 7 days
+  for (let i = 0; i < 7; i++) {
+    const baseDate = new Date(todayNow);
+    baseDate.setDate(todayNow.getDate() + i);
+
+    let checkIn: Date;
+    let checkOut: Date;
+
+    if (i === 0) {
+      // TODAY
+      checkIn = todayNow;          // current time
+      checkOut = endOfDay(baseDate);
+    } else {
+      // NEXT 6 DAYS
+      checkIn = startOfDay(baseDate);
+      checkOut = endOfDay(baseDate);
+    }
+
+    const dayAvailability = await this.getAvailableRooms(
+      lodgeId,
+      checkIn,
+      checkOut
+    );
+
+    results.push({
+      day: i,
+      date: baseDate.toISOString().split("T")[0],
+      check_in: checkIn,
+      check_out: checkOut,
+      availability: dayAvailability,
+    });
+  }
+
+  return results;
+}
+
 async getRoomCountsForNext7Days(lodgeId: number) {
 
   // 🔹 Step 1 — Fetch all rooms
