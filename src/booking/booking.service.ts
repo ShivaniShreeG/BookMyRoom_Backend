@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException ,InternalServerErrorException} from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException ,InternalServerErrorException,Param} from '@nestjs/common';
 import { PrismaClient, BookingStatus } from '@prisma/client';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { CreatePreBookingDto } from './dto/pre-booking.dto';
@@ -345,28 +345,48 @@ if (isNaN(lodgeIdNumber)) {
     throw new BadRequestException('Internal Server Error. Check server logs.');
   }
 }
+async getPreBookedData(lodgeId: number, nowString: string) {
+  if (!nowString) {
+    throw new BadRequestException("Missing 'now' query parameter");
+  }
 
-async getPreBookedData(lodgeId: number) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  const now = new Date(nowString);
 
   return prisma.booking.findMany({
     where: {
       lodge_id: lodgeId,
       status: "PREBOOKED",
-      check_in: {
-        gte: today,       
-        lt: tomorrow,     
-      },
+      check_in: { lte: now },  
+      check_out: { gte: now }, 
     },
     orderBy: {
       created_at: "desc",
     },
   });
 }
+
+
+// async getPreBookedData(lodgeId: number) {
+//   const today = new Date();
+//   today.setHours(0, 0, 0, 0);
+
+//   const tomorrow = new Date(today);
+//   tomorrow.setDate(tomorrow.getDate() + 1);
+
+//   return prisma.booking.findMany({
+//     where: {
+//       lodge_id: lodgeId,
+//       status: "PREBOOKED",
+//       check_in: {
+//         gte: today,       
+//         lt: tomorrow,     
+//       },
+//     },
+//     orderBy: {
+//       created_at: "desc",
+//     },
+//   });
+// }
 
  async getLatestBookingByPhone(lodgeId: number, phone: string) {
     if (!lodgeId || !phone) {

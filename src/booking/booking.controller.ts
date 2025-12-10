@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UploadedFiles, UseInterceptors, BadRequestException, Req, Param, ParseIntPipe, Get, Put} from '@nestjs/common';
+import { Controller, Post, Body, UploadedFiles, UseInterceptors, BadRequestException, Req, Query, Param, ParseIntPipe, Get, Put} from '@nestjs/common';
 import { BookingService } from './booking.service';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -114,7 +114,6 @@ async createBooking(
       }),
     }),
   )
-  
   async updateBooking(
   @Param('lodgeId') lodgeId: string,
   @Param('bookingId') bookingId: string,
@@ -193,8 +192,10 @@ async getLatestBooking(
 @Get('prebooked/:lodgeId')
 async getPreBooked(
   @Param('lodgeId', ParseIntPipe) lodgeId: number,
+  @Query('now') now: string,   // 👈 receive date from frontend
 ) {
-  return this.bookingService.getPreBookedData(lodgeId);
+  return this.bookingService.getPreBookedData(lodgeId, now);
 }
+
 
 }
