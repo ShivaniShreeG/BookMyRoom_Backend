@@ -345,25 +345,30 @@ if (isNaN(lodgeIdNumber)) {
     throw new BadRequestException('Internal Server Error. Check server logs.');
   }
 }
+
 async getPreBookedData(lodgeId: number, nowString: string) {
   if (!nowString) {
     throw new BadRequestException("Missing 'now' query parameter");
   }
 
-  const now = new Date(nowString);
+  // Convert incoming date string to a date-only range
+  const date = new Date(nowString);
+  const startOfDay = new Date(date.setHours(0, 0, 0, 0));
+  const endOfDay = new Date(date.setHours(23, 59, 59, 999));
 
   return prisma.booking.findMany({
     where: {
       lodge_id: lodgeId,
       status: "PREBOOKED",
-      check_in: { lte: now },  
-      check_out: { gte: now }, 
+      check_in: { lte: endOfDay },   // check_in is before or on this date
+      check_out: { gte: startOfDay }, // check_out is on or after this date
     },
     orderBy: {
       created_at: "desc",
     },
   });
 }
+
 
 
 // async getPreBookedData(lodgeId: number) {
