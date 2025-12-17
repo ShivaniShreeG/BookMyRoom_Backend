@@ -1,5 +1,5 @@
-import { Injectable, BadRequestException, NotFoundException ,InternalServerErrorException,Param} from '@nestjs/common';
-import { PrismaClient, BookingStatus } from '@prisma/client';
+import { Injectable, BadRequestException, NotFoundException ,InternalServerErrorException} from '@nestjs/common';
+import { PrismaClient } from '@prisma/client';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { CreatePreBookingDto } from './dto/pre-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
@@ -368,30 +368,6 @@ async getPreBookedData(lodgeId: number, nowString: string) {
     },
   });
 }
-
-
-
-// async getPreBookedData(lodgeId: number) {
-//   const today = new Date();
-//   today.setHours(0, 0, 0, 0);
-
-//   const tomorrow = new Date(today);
-//   tomorrow.setDate(tomorrow.getDate() + 1);
-
-//   return prisma.booking.findMany({
-//     where: {
-//       lodge_id: lodgeId,
-//       status: "PREBOOKED",
-//       check_in: {
-//         gte: today,       
-//         lt: tomorrow,     
-//       },
-//     },
-//     orderBy: {
-//       created_at: "desc",
-//     },
-//   });
-// }
 
  async getLatestBookingByPhone(lodgeId: number, phone: string) {
     if (!lodgeId || !phone) {
