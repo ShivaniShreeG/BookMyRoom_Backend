@@ -68,7 +68,7 @@ export class LodgeService {
 
     const now = new Date();
     const duedate = new Date(now);
-    duedate.setMonth(duedate.getMonth() + 3);
+    duedate.setMonth(duedate.getMonth() + 2);
 
     const lodge = await prisma.lodge.create({
       data: {

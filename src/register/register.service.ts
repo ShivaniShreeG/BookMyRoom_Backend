@@ -48,7 +48,7 @@ async createLodgeWithAdmin(dto: CreateLodgeAdminDto) {
   return prisma.$transaction(async (tx) => {
     const now = new Date();
     const dueDate = new Date(now);
-    dueDate.setMonth(dueDate.getMonth() + 3);
+    dueDate.setMonth(dueDate.getMonth() + 2);
 
     // Create Lodge using provided ID
     const lodge = await tx.lodge.create({
