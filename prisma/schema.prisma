@@ -14,8 +14,9 @@ enum Role {
 
 enum AppPaymentStatus {
   PENDING
-  SUCCESS
+  COMPLETED
   FAILED
+  REFUND
 }
 
 enum BookingStatus {
